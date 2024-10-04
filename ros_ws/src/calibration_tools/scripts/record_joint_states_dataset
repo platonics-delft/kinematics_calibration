@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+import rospy
+import numpy as np
+import pynput
+
+from sensor_msgs.msg import JointState
+
+class JointStatesRecorder():
+    def __init__(self):
+        rospy.init_node("joint_states_recorder")
+        self._rate = rospy.Rate(1)
+        self._joint_states_sub = rospy.Subscriber("/joint_states", JointState, self.joint_states_callback)
+        self._data = []
+        self._positions = np.zeros(7)
+        pykeyboard = pynput.keyboard.Listener(on_press=self.on_press)
+        self._counter = 0
+        pykeyboard.start()
+
+    def on_press(self, key):
+        # Add the current position to the data if the space key is pressed
+        if key == pynput.keyboard.Key.space:
+            self._data.append(np.array(self._positions)[0:7])
+            self._counter += 1
+
+    def joint_states_callback(self, msg: JointState):
+        self._positions = msg.position
+
+    def run(self):
+        while not rospy.is_shutdown():
+            self._rate.sleep()
+            print(self._counter)
+        np.savetxt("joint_angles.csv", np.array(self._data), delimiter=",")
+
+
+
+if __name__ == "__main__":
+    node = JointStatesRecorder()
+    try:
+        node.run()
+    except rospy.ROSInterruptException:
+        pass
+

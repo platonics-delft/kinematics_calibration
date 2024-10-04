@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "calibrate-fk"
+version = "0.1.0"
+description = ""
+authors = ["Max Spahn <m.spahn@tudelft.nl>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8,<3.10"
+forwardkinematics = {git = "https://github.com/maxspahn/forwardKinematics", rev = "ft-symbolic-fk"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

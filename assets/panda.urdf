@@ -495,10 +495,16 @@
   <!-- Define the hand_tcp frame -->
   <link name="panda_hand_tcp"/>
   <joint name="panda_hand_tcp_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0.1284"/>
-    <!--origin rpy="0 0 0" xyz="0 0 0.1034"/-->
+    <origin rpy="0 0 0" xyz="0 0 0.1034"/>
     <parent link="panda_hand"/>
     <child link="panda_hand_tcp"/>
+  </joint>
+  <link name="panda_ball"/>
+  <joint name="panda_tcp_ball_joint" type="fixed">
+    <origin rpy="0 0 0" xyz="0 0 0.1284"/>
+    <!--origin rpy="0 0 0" xyz="0 0 0.1034"/-->
+    <parent link="panda_hand_tcp"/>
+    <child link="panda_ball"/>
   </joint>
   <link name="panda_leftfinger">
     <visual>

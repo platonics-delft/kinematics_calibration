@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import casadi as ca
 from copy import deepcopy
@@ -9,8 +10,8 @@ import pprint
 def main():
     absolute_path = os.path.dirname(os.path.abspath(__file__))
     URDF_FILE=absolute_path + "/../assets/panda.urdf"
-    DATA_FILE=absolute_path + "/../data/angles_panda2.csv"
-    DATA_FILE_VALIDATION=absolute_path + "/../data/angles_panda3.csv"
+    DATA_FILE_1=absolute_path + '/' + sys.argv[1]
+    DATA_FILE_2=absolute_path + '/' + sys.argv[2]
     symbolic_params = {
         "panda_joint1": {
             "x": ca.SX.sym("panda_joint1_x"),
@@ -68,13 +69,13 @@ def main():
             "pitch": ca.SX.sym("panda_joint7_pitch"),
             "yaw": ca.SX.sym("panda_joint7_yaw"),
         },
-        "panda_hand_tcp_joint": {
-            'z': ca.SX.sym("panda_hand_tcp_joint_z"),
-            'x': ca.SX.sym("panda_hand_tcp_joint_x"),
-            'y': ca.SX.sym("panda_hand_tcp_joint_y"),
-            'roll': ca.SX.sym("panda_hand_tcp_joint_roll"),
-            'pitch': ca.SX.sym("panda_hand_tcp_joint_pitch"),
-            'yaw': ca.SX.sym("panda_hand_tcp_joint_yaw"),
+        "panda_tcp_ball_joint": {
+            'z': ca.SX.sym("panda_tcp_ball_joint_z"),
+            'x': ca.SX.sym("panda_tcp_ball_joint_x"),
+            'y': ca.SX.sym("panda_tcp_ball_joint_y"),
+            'roll': ca.SX.sym("panda_tcp_ball_joint_roll"),
+            'pitch': ca.SX.sym("panda_tcp_ball_joint_pitch"),
+            'yaw': ca.SX.sym("panda_tcp_ball_joint_yaw"),
         },
     }
 
@@ -140,8 +141,8 @@ def main():
             "pitch": 0.0,
             "yaw": 0.0,
         },
-        "panda_hand_tcp_joint": {
-            'z': 0.1284,
+        "panda_tcp_ball_joint": {
+            'z': 0.03,
             'x': 0.0,
             'y': 0.0,
             'roll': 0.0,
@@ -160,17 +161,13 @@ def main():
 
     with open(URDF_FILE, "r") as file:
         urdf = file.read()
-    optimizer = ParameterOptimizer(urdf,'panda_link0',"panda_hand_tcp",symbolic_params)
+    optimizer = ParameterOptimizer(urdf,'panda_link0',"panda_ball",symbolic_params)
     optimizer.best_params = guessed_params
-    optimizer.read_data(DATA_FILE)
-    fk_mean, fk_var = optimizer.evaluate_fks()
-    print(f"Mean: {fk_mean}")
-    print(f"Variance: {fk_var}")
+    optimizer.read_data(DATA_FILE_1, DATA_FILE_2)
+    optimizer.evaluate_fks(verbose=True)
     optimizer.optimize()
-    fk_mean, fk_var = optimizer.evaluate_fks()
-    print(f"Mean: {fk_mean}")
-    print(f"Variance: {fk_var}")
-    pprint.pprint(optimizer.best_params)
+    optimizer.evaluate_fks(verbose=True)
+    #pprint.pprint(optimizer.best_params)
     optimizer.modify_urdf_parameters(URDF_FILE, 'test.urdf')
 
     #with open(URDF_FILE, "r") as file:
@@ -178,10 +175,10 @@ def main():
     #optimizer = ParameterOptimizer(urdf,'panda_link0',"panda_hand_tcp",symbolic_params)
     #optimizer.best_params = guessed_params_copy
     #print(optimizer.best_params)
-    optimizer.read_data(DATA_FILE_VALIDATION)
-    fk_mean, fk_var = optimizer.evaluate_fks()
-    print(f"Mean Validation: {fk_mean}")
-    print(f"Variance Validation: {fk_var}")
+    #optimizer.read_data(DATA_FILE_VALIDATION)
+    #fk_mean, fk_var = optimizer.evaluate_fks()
+    #print(f"Mean Validation: {fk_mean}")
+    #print(f"Variance Validation: {fk_var}")
 
 
 if __name__ == "__main__":

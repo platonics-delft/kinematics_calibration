@@ -8,7 +8,9 @@ class ParameterOptimizer():
     _params: Dict[str, Dict[str, ca.SX]]
     _best_params: dict
     _symbolic_fk: GenericURDFFk
-    _data: np.ndarray
+    _data_1: np.ndarray
+    _data_2: np.ndarray
+    _offset_distance: float = 0.05
 
     def __init__(self, urdf: str, root_link: str, end_link: str, params: Dict[str, Dict[str, ca.SX]]):
         self._symbolic_fk = GenericURDFFk(
@@ -42,39 +44,37 @@ class ParameterOptimizer():
                 parameter_list.append(param)
         return np.array(parameter_list)
 
-    def read_data(self, file_path: str):
-        self._data = np.loadtxt(file_path, delimiter=",")
+    def read_data(self, file_path_1: str, file_path_2: str):
+        self._data_1 = np.loadtxt(file_path_1, delimiter=",")
+        self._data_2 = np.loadtxt(file_path_2, delimiter=",")
 
     def optimize(self):
-        fks = []
-        for joint_angles in self._data:
-            substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles)
-            fks.append(substituted_fk)
+        fks_1 = []
+        for joint_angles_1 in self._data_1:
+            substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
+            fks_1.append(substituted_fk)
+        fks_2 = []
+        for joint_angles_2 in self._data_2:
+            substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_2)
+            fks_2.append(substituted_fk)
 
-        fk_mean = ca.sum2(ca.horzcat(*fks)) / len(fks)
-        fk_variance = ca.sum2(ca.horzcat(*[(fk - fk_mean)**2 for fk in fks])) / len(fks)
-        fk_variance_norm = ca.sum1(fk_variance)
+        fk_mean_1 = ca.sum2(ca.horzcat(*fks_1)) / len(fks_1)
+        fk_variance_1 = ca.sum2(ca.horzcat(*[(fk - fk_mean_1)**2 for fk in fks_1])) / len(fks_1)
+        fk_variance_norm_1 = ca.sum1(fk_variance_1)
+        fk_mean_2 = ca.sum2(ca.horzcat(*fks_2)) / len(fks_2)
+        fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
+        fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
-        pairwise_comparison_objective = 0
-        for i in range(len(fks)):
-            for j in range(i, len(fks)):
-                if i == j:
-                    continue
-                diff = ca.norm_2(fks[i] - fks[j])**2
-                symbols = ca.symvar(diff)
-                pairwise_comparison_objective += diff
-
-
-
+        distance_error = (ca.norm_2(fk_mean_1[0:2] - fk_mean_2[0:2]) - self._offset_distance)**2
+        height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 
 
 
+        objective = fk_variance_norm_1 + fk_variance_norm_2 + distance_error + height_error
 
 
-        #objective = q[0]**2
         parameter_list = self.list_parameters()
-        #problem = {'x': parameter_list, 'f': pairwise_comparison_objective}
         # Add constraints
-        problem = {'x': parameter_list, 'f': fk_variance_norm}
+        problem = {'x': parameter_list, 'f': objective}
         # set learning rate /step size
         solver_options = {'ipopt': {
             'print_level': 0,
@@ -82,10 +82,10 @@ class ParameterOptimizer():
         }
         solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
         x0 = self.list_best_parameters()
-        parameter_space_width = 0.01
+        parameter_space_width = 1.01
         lbx = x0 - parameter_space_width
         ubx = x0 + parameter_space_width
-        solution = solver(x0=x0, lbx=lbx, ubx=ubx)
+        solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
         solution_list = np.array(solution['x'])[:, 0].tolist()
         for i in range(len(solution_list)):
             symbol = parameter_list[i]
@@ -103,18 +103,30 @@ class ParameterOptimizer():
         self._best_params = value
 
 
-    def evaluate_fks(self) -> Tuple[np.ndarray, np.ndarray]:
-        fks = np.zeros((len(self._data), 3))
+    def evaluate_fks(self, verbose: bool = False) -> tuple:
         fk_exp = ca.substitute(self._fk_casadi_expr, self.list_parameters(), self.list_best_parameters())
         fk_fun = ca.Function('fk_eval', [self._q], [fk_exp])
-        for i, joint_angles in enumerate(self._data):
-            fks[i] = np.array(fk_fun(joint_angles)).flatten()
-            #print(self._fk_fun_pure(joint_angles))
-            #print(fks[i])
 
-        fk_mean = np.mean(fks, axis=0)
-        fk_variance = np.var(fks, axis=0)
-        return fk_mean, fk_variance
+        fks_1 = np.zeros((len(self._data_1), 3))
+        fks_2 = np.zeros((len(self._data_2), 3))
+        for i, joint_angles in enumerate(self._data_1):
+            fks_1[i] = np.array(fk_fun(joint_angles)).flatten()
+        for i, joint_angles in enumerate(self._data_2):
+            fks_2[i] = np.array(fk_fun(joint_angles)).flatten()
+
+        fk_mean_1 = np.mean(fks_1, axis=0)
+        fk_variance_1 = np.var(fks_1, axis=0)
+        fk_mean_2 = np.mean(fks_2, axis=0)
+        fk_variance_2 = np.var(fks_2, axis=0)
+        distance_error = np.linalg.norm(fk_mean_1 - fk_mean_2) - self._offset_distance
+        if verbose:
+            print(f"Mean_1: {fk_mean_1}")
+            print(f"Variance_1: {fk_variance_1}")
+            print(f"Mean_2: {fk_mean_2}")
+            print(f"Variance_2: {fk_variance_2}")
+            print(f"Distance Error: {distance_error}")
+            print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
+        return fk_mean_1, fk_variance_1, fk_mean_2, fk_variance_2, distance_error
 
 
     def modify_urdf_parameters(self, urdf_file: str, output_file: str):

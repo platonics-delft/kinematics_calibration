@@ -1,8 +1,17 @@
+import os
 import numpy as np
 from typing import Dict, Tuple
 import casadi as ca
 import xml.etree.ElementTree as ET
 from forwardkinematics import GenericURDFFk
+import tkinter as tk
+from tkinter import filedialog
+
+root = tk.Tk()
+root.withdraw()
+
+class UrdfNotLoadedException(Exception):
+    pass
 
 class ParameterOptimizer():
     _params: Dict[str, Dict[str, ca.SX]]
@@ -11,24 +20,64 @@ class ParameterOptimizer():
     _data_1: np.ndarray
     _data_2: np.ndarray
     _offset_distance: float = 0.05
+    _urdf: str
+    _urdf_file: str
+    _end_link: str
 
-    def __init__(self, urdf: str, root_link: str, end_link: str, params: Dict[str, Dict[str, ca.SX]]):
-        self._symbolic_fk = GenericURDFFk(
-            urdf,
-            root_link=root_link,
-            end_links=[end_link],
+    def __init__(self):
+        pass
+
+    def load_model(self) -> None:
+        default_model_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../assets")
+        print("Select a urdf model.")
+        self._urdf_file = filedialog.askopenfilename(
+            title="Select a urdf model",
+            initialdir=default_model_directory,
         )
-        self._urdf = urdf
-        self._params = params
-        self._best_params = {}
-        for joint_name, joint_params in self._params.items():
-            self._best_params[joint_name] = {}
-            for param_name, param in joint_params.items():
-                self._best_params[joint_name][param_name] = 0
+
+        if not self._urdf_file or not os.path.exists(self._urdf_file):
+            raise FileNotFoundError(f"URDF file {self._urdf_file} not found.")
+        with open(self._urdf_file, "r") as file:
+            self._urdf = file.read()
+
+    def create_symbolic_fk(self, root_link: str, end_link: str) -> None:
+        if not self._urdf:
+            raise UrdfNotLoadedException("No urdf specified, load urdf first.")
+        self._end_link = end_link
+        self._symbolic_fk = GenericURDFFk(
+            self._urdf,
+            root_link=root_link,
+            end_links=[self._end_link],
+        )
         self._q = ca.SX.sym("q", self._symbolic_fk.n())
-        self._fk_casadi_expr = self._symbolic_fk.casadi(self._q, end_link, position_only=True, symbolic_parameters=self._params)
-        self._fk_casadi_expr_pure = self._symbolic_fk.casadi(self._q, end_link, position_only=True)
-        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
+
+    def select_parameters(self) -> None:
+        self._params = {}
+        self._best_params = {}
+        for joint in self._symbolic_fk.robot.active_joints():
+            joint_is_active = input(f"Should the joint {joint} be optimized? (y/n): ")
+            if joint_is_active.lower() == "y":
+                self._params[joint] = {
+                    "x": ca.SX.sym(f"{joint}_x"),
+                    "y": ca.SX.sym(f"{joint}_y"),
+                    "z": ca.SX.sym(f"{joint}_z"),
+                    "roll": ca.SX.sym(f"{joint}_roll"),
+                    "pitch": ca.SX.sym(f"{joint}_pitch"),
+                    "yaw": ca.SX.sym(f"{joint}_yaw"),
+                }
+                self._best_params[joint] = {
+                    "x": 0,
+                    "y": 0,
+                    "z": 0,
+                    "roll": 0,
+                    "pitch": 0,
+                    "yaw": 0,
+                }
+
+    def create_fk_expression(self) -> None:
+        self._fk_casadi_expr = self._symbolic_fk.casadi(self._q, self._end_link, position_only=True, symbolic_parameters=self._params)
+        self._fk_casadi_expr_pure = self._symbolic_fk.casadi(self._q, self._end_link, position_only=True)
+
 
     def list_parameters(self) -> ca.SX:
         parameter_list = []
@@ -44,11 +93,26 @@ class ParameterOptimizer():
                 parameter_list.append(param)
         return np.array(parameter_list)
 
-    def read_data(self, file_path_1: str, file_path_2: str):
+    def read_data(self):
+        default_data_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../ros_ws")
+        print("Select the folder containing the recorded data.")
+        recording_folder = filedialog.askdirectory(
+            title="Select a data folder.",
+            initialdir=default_data_directory,
+        )
+        if not recording_folder or not os.path.exists(recording_folder):
+            raise FileNotFoundError(f"Recording folder {recording_folder} not found.")
+        file_path_1 = os.path.join(recording_folder, "hole_0.csv")
+        if not os.path.exists(file_path_1):
+            raise FileNotFoundError(f"Data file {file_path_1} not found.")
+        file_path_2 = os.path.join(recording_folder, "hole_1.csv")
+        if not os.path.exists(file_path_2):
+            raise FileNotFoundError(f"Data file {file_path_2} not found.")
         self._data_1 = np.loadtxt(file_path_1, delimiter=",")
         self._data_2 = np.loadtxt(file_path_2, delimiter=",")
 
     def optimize(self):
+        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
         fks_1 = []
         for joint_angles_1 in self._data_1:
             substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
@@ -129,19 +193,18 @@ class ParameterOptimizer():
         return fk_mean_1, fk_variance_1, fk_mean_2, fk_variance_2, distance_error
 
 
-    def modify_urdf_parameters(self, urdf_file: str, output_file: str):
+    def modify_urdf_parameters(self, output_file: str):
         """
         Modify the URDF file's joint parameters (xyz, rpy) based on the param_dict
         and save the modified URDF to a new file.
 
         Args:
-        - urdf_file (str): Path to the input URDF file.
         - param_dict (dict): Dictionary containing joint names as keys and their corresponding
                              'x', 'y', 'z', 'roll', 'pitch', 'yaw' values as sub-keys.
         - output_file (str): Path to the output URDF file.
         """
         # Load URDF file
-        tree = ET.parse(urdf_file)
+        tree = ET.parse(self._urdf_file)
         root = tree.getroot()
 
         # Iterate through all 'joint' elements
@@ -160,6 +223,7 @@ class ParameterOptimizer():
 
         # Save the modified URDF to the output file
         tree.write(output_file, xml_declaration=True, encoding='utf-8')
+        print(f"Modified URDF saved to {output_file}")
 
 
 

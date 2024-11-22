@@ -1,10 +1,4 @@
-import sys
-import numpy as np
-import casadi as ca
-from copy import deepcopy
-import os
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
-import pprint
 
 
 def main():

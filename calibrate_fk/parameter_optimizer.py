@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional, List, Set
 import casadi as ca
 import xml.etree.ElementTree as ET
 from forwardkinematics import GenericURDFFk
@@ -27,13 +27,16 @@ class ParameterOptimizer():
     def __init__(self):
         pass
 
-    def load_model(self) -> None:
-        default_model_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../assets")
-        print("Select a urdf model.")
-        self._urdf_file = filedialog.askopenfilename(
-            title="Select a urdf model",
-            initialdir=default_model_directory,
-        )
+    def load_model(self, filename: Optional[str] = None) -> None:
+        if filename is None:
+            default_model_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../assets")
+            print("Select a urdf model.")
+            self._urdf_file = filedialog.askopenfilename(
+                title="Select a urdf model",
+                initialdir=default_model_directory,
+            )
+        else: 
+            self._urdf_file = filename
 
         if not self._urdf_file or not os.path.exists(self._urdf_file):
             raise FileNotFoundError(f"URDF file {self._urdf_file} not found.")
@@ -52,27 +55,50 @@ class ParameterOptimizer():
         self._q = ca.SX.sym("q", self._symbolic_fk.n())
 
     def select_parameters(self) -> None:
-        self._params = {}
-        self._best_params = {}
+        selected_parameters = []
         for joint in self._symbolic_fk.robot.active_joints():
             joint_is_active = input(f"Should the joint {joint} be optimized? (y/n): ")
             if joint_is_active.lower() == "y":
-                self._params[joint] = {
-                    "x": ca.SX.sym(f"{joint}_x"),
-                    "y": ca.SX.sym(f"{joint}_y"),
-                    "z": ca.SX.sym(f"{joint}_z"),
-                    "roll": ca.SX.sym(f"{joint}_roll"),
-                    "pitch": ca.SX.sym(f"{joint}_pitch"),
-                    "yaw": ca.SX.sym(f"{joint}_yaw"),
-                }
-                self._best_params[joint] = {
-                    "x": 0,
-                    "y": 0,
-                    "z": 0,
-                    "roll": 0,
-                    "pitch": 0,
-                    "yaw": 0,
-                }
+                selected_parameters.append(joint)
+        self.create_parameters(selected_parameters)
+
+    @property
+    def active_joints(self) -> Set[str]:
+        return self._symbolic_fk.robot.active_joints()
+
+    @property
+    def available_links(self) -> Set[str]:
+        tree = ET.parse(self._urdf_file)
+        root = tree.getroot()
+
+        links = set()
+
+        # Iterate through all elements and find <link> tags
+        for link in root.iter('link'):
+            links.add(link.attrib['name'])
+
+        return links
+
+    def create_parameters(self, selected_joints: List[str]) -> None:
+        self._params = {}
+        self._best_params = {}
+        for joint in selected_joints:
+            self._params[joint] = {
+                "x": ca.SX.sym(f"{joint}_x"),
+                "y": ca.SX.sym(f"{joint}_y"),
+                "z": ca.SX.sym(f"{joint}_z"),
+                "roll": ca.SX.sym(f"{joint}_roll"),
+                "pitch": ca.SX.sym(f"{joint}_pitch"),
+                "yaw": ca.SX.sym(f"{joint}_yaw"),
+            }
+            self._best_params[joint] = {
+                "x": np.random.uniform(-0.1, 0.1),
+                "y": np.random.uniform(-0.1, 0.1),
+                "z": np.random.uniform(-0.1, 0.1),
+                "roll": np.random.uniform(-0.1, 0.1),
+                "pitch": np.random.uniform(-0.1, 0.1),
+                "yaw": np.random.uniform(-0.1, 0.1),
+            }
 
     def create_fk_expression(self) -> None:
         self._fk_casadi_expr = self._symbolic_fk.casadi(self._q, self._end_link, position_only=True, symbolic_parameters=self._params)
@@ -93,13 +119,16 @@ class ParameterOptimizer():
                 parameter_list.append(param)
         return np.array(parameter_list)
 
-    def read_data(self):
-        default_data_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../ros_ws")
-        print("Select the folder containing the recorded data.")
-        recording_folder = filedialog.askdirectory(
-            title="Select a data folder.",
-            initialdir=default_data_directory,
-        )
+    def read_data(self, folder: Optional[str] = None) -> None:
+        if not folder:
+            default_data_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../ros_ws")
+            print("Select the folder containing the recorded data.")
+            recording_folder = filedialog.askdirectory(
+                title="Select a data folder.",
+                initialdir=default_data_directory,
+            )
+        else:
+            recording_folder = folder
         if not recording_folder or not os.path.exists(recording_folder):
             raise FileNotFoundError(f"Recording folder {recording_folder} not found.")
         file_path_1 = os.path.join(recording_folder, "hole_0.csv")
@@ -167,7 +196,7 @@ class ParameterOptimizer():
         self._best_params = value
 
 
-    def evaluate_fks(self, verbose: bool = False) -> tuple:
+    def evaluate_fks(self, verbose: bool = False) -> dict:
         fk_exp = ca.substitute(self._fk_casadi_expr, self.list_parameters(), self.list_best_parameters())
         fk_fun = ca.Function('fk_eval', [self._q], [fk_exp])
 
@@ -178,11 +207,11 @@ class ParameterOptimizer():
         for i, joint_angles in enumerate(self._data_2):
             fks_2[i] = np.array(fk_fun(joint_angles)).flatten()
 
-        fk_mean_1 = np.mean(fks_1, axis=0)
-        fk_variance_1 = np.var(fks_1, axis=0)
-        fk_mean_2 = np.mean(fks_2, axis=0)
-        fk_variance_2 = np.var(fks_2, axis=0)
-        distance_error = np.linalg.norm(fk_mean_1 - fk_mean_2) - self._offset_distance
+        fk_mean_1 = np.round(np.mean(fks_1, axis=0), decimals=4)
+        fk_variance_1 = np.round(np.var(fks_1, axis=0), decimals=4)
+        fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=4)
+        fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=4)
+        distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - self._offset_distance, decimals=4)
         if verbose:
             print(f"Mean_1: {fk_mean_1}")
             print(f"Variance_1: {fk_variance_1}")
@@ -190,7 +219,15 @@ class ParameterOptimizer():
             print(f"Variance_2: {fk_variance_2}")
             print(f"Distance Error: {distance_error}")
             print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
-        return fk_mean_1, fk_variance_1, fk_mean_2, fk_variance_2, distance_error
+        kpis = {
+            "mean_1": fk_mean_1,
+            "var_1": fk_variance_1,
+            "mean_2": fk_mean_2,
+            "var_2": fk_variance_2,
+            "distance": distance_error,
+        }
+        return kpis
+
 
 
     def modify_urdf_parameters(self, output_file: str):

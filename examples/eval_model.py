@@ -27,7 +27,7 @@ with_mesh = args.with_mesh
 eval_folder = args.evalauate_on
 show_urdf = args.show
 overlay = args.overlay
-output_folder = args.output_folder
+output_folder = "evaluations/" + args.output_folder
 camera_setting_file = args.camera_settings
 
 # Delete the the output folder if using the default name

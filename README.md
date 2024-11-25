@@ -58,10 +58,36 @@ example folder and run  the optimization script.
 
 ```bash
 cd examples
-python3 run_optimizer.py <path_to_first_csv> <path_to_second_csv>
+python3 run_optimizer.py --urdf-file <path/to/urdf> --calibrate-on <path/to/data/folder> 
 ```
 
+To get the full list of arguments, run the following command:
+
+```bash
+python3 run_optimizer.py --help
+```
+
+
 This script runs the optimazation and prints the result. It outputs a new `urdf`
-file for the panda robot with the optimized parameters called `test.urdf`.
+in the asset folder with the optimized parameters. KPI's are stored in the
+output folder (default is `output`).
 
+## Evaluate a calibration
 
+You can evaluate the calibration by runnig.
+
+```bash
+cd examples
+python3 eval_model.py --urdf-file <path/to/urdf> --evaluate-on <path/to/data/folder> 
+```
+
+This scripts produces the kpis.
+By passing the `-s` flag, you can show the robot.
+By passing the `--overlay` flag an overlay of all the configuration is saved to
+the output folder.
+
+To get all the potential arguments, run the following command:
+
+```bash
+python3 eval_model.py --help
+```

@@ -24,7 +24,7 @@ args = argument_parser.parse_args()
 
 urdf_file = args.urdf_file
 with_mesh = args.with_mesh
-eval_folder = args.eval_on
+eval_folder = args.evalauate_on
 show_urdf = args.show
 overlay = args.overlay
 output_folder = args.output_folder
@@ -77,6 +77,7 @@ if eval_folder:
     q_show = q_hole_0[0]
     if show_urdf:
         robot.update_cfg(q_show)
+        print("Move the view such that you can nicely see the end-effector.")
         robot.show()
         saved_camera = {
             'transform': robot.scene.camera_transform.tolist(), 
@@ -84,8 +85,8 @@ if eval_folder:
         }
 
         print(f"Camera settings saved in: {camera_setting_file}")
-    with open(camera_setting_file, 'w') as f:
-        json.dump(saved_camera, f)
+        with open(camera_setting_file, 'w') as f:
+            json.dump(saved_camera, f)
 
     kpis = evaluate_model(robot, eval_folder, verbose=True)
     with open(f"{output_folder}/kpis.yaml", 'w') as f:
@@ -95,6 +96,7 @@ if eval_folder:
     if overlay:
         for j, q_data in enumerate([q_hole_0, q_hole_1]):
             for i, q in enumerate(q_data):
+                print(f"Creating image for hole {j}/2 and config {i}/{len(q_data)}")
                 robot.update_cfg(q)
                 img_bin = robot.scene.save_image((800, 800))
                 img = Image.open(BytesIO(img_bin))
@@ -112,7 +114,7 @@ if eval_folder:
 
 
 
-if show_urdf:
+if show_urdf and not eval_folder:
     robot.update_cfg(q_show)
     robot.show()
     saved_camera = {

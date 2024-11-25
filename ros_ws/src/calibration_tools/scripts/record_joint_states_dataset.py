@@ -13,7 +13,8 @@ class JointStatesRecorder():
         self._rate = rospy.Rate(2)
         self._joint_states_sub = rospy.Subscriber(joint_state_topic_name, JointState, self.joint_states_callback)
         self._data = {"hole_0": [], "hole_1": []}
-        self._positions = np.zeros(7)
+        self._dof = dof
+        self._positions = np.zeros(self._dof)
         self._active_hole = 0
         self._pykeyboard = pynput.keyboard.Listener(on_press=self.on_press)
         self._pykeyboard.start()
@@ -60,7 +61,7 @@ class JointStatesRecorder():
     def on_press(self, key):
         # Add the current position to the data if the space key is pressed
         if key.char == 'a':
-            self._data[self.hole_name()].append(np.array(self._positions)[0:7])
+            self._data[self.hole_name()].append(self._positions)
             self.log(f"Addded data point for {self.hole_name()} with value {self._positions}")
         elif key.char == 'd':
             self._data[self.hole_name()] = self._data[self.hole_name()][0:-1]
@@ -104,11 +105,12 @@ class JointStatesRecorder():
         
 
     def joint_states_callback(self, msg: JointState):
-        self._positions = msg.position
+        self._positions = np.array(msg.position)[0:self._dof]
 
     def run(self):
         while not rospy.is_shutdown():
             self._rate.sleep()
+        rospy.signal_shutdown("Finished recording data")
 
 
 

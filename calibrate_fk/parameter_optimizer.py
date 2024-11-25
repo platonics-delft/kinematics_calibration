@@ -188,7 +188,7 @@ class ParameterOptimizer():
         self._data_folder = folder
         self._data_1, self._data_2 = read_data(folder=folder)
 
-    def optimize(self):
+    def optimize(self, saving_steps: bool = False):
         self.create_fk_expression()
         self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
         fks_1 = []
@@ -221,11 +221,12 @@ class ParameterOptimizer():
         # set learning rate /step size
         calibration_iteration_callback = IterationStepCallback("iteration_callback", nx=nx)
         solver_options = {
-            'iteration_callback': calibration_iteration_callback,
             'ipopt': {
                 'print_level': 3,
             },
         }
+        if saving_steps:
+            solver_options['iteration_callback'] = calibration_iteration_callback
         solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
         x0 = self.list_best_parameters()
         solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
@@ -240,21 +241,22 @@ class ParameterOptimizer():
         output_file = os.path.join(output_folder, f"{self._output_folder}.urdf")
         self.modify_urdf_parameters(output_file, self._best_params)
         self._model = yourdfpy.URDF.load(output_file)
-        for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
-            intermediate_parameters = deepcopy(self._best_params)
-            for j in range(len(intermediate_solution)):
-                symbol = parameter_list[j]
-                value = solution_list[j]
-                joint_name, param_name = symbol.name().rsplit("_", 1)
-                intermediate_parameters[joint_name][param_name] = value
-            intermediate_folder = f"{self._output_folder}/step_{i}"
-            os.makedirs(intermediate_folder, exist_ok=True)
-            intermediate_urdf = f"{intermediate_folder}/model.urdf"
-            self.modify_urdf_parameters(intermediate_urdf, intermediate_parameters)
-            intermediate_model = yourdfpy.URDF.load(intermediate_urdf)
-            kpis = evaluate_model(intermediate_model, self._data_folder, verbose=False)
-            with open(f"{intermediate_folder}/kpis.yaml", 'w') as f:
-                yaml.dump(kpis, f)
+        if saving_steps:
+            for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
+                intermediate_parameters = deepcopy(self._best_params)
+                for j in range(len(intermediate_solution)):
+                    symbol = parameter_list[j]
+                    value = solution_list[j]
+                    joint_name, param_name = symbol.name().rsplit("_", 1)
+                    intermediate_parameters[joint_name][param_name] = value
+                intermediate_folder = f"{self._output_folder}/step_{i}"
+                os.makedirs(intermediate_folder, exist_ok=True)
+                intermediate_urdf = f"{intermediate_folder}/model.urdf"
+                self.modify_urdf_parameters(intermediate_urdf, intermediate_parameters)
+                intermediate_model = yourdfpy.URDF.load(intermediate_urdf)
+                kpis = evaluate_model(intermediate_model, self._data_folder, verbose=False)
+                with open(f"{intermediate_folder}/kpis.yaml", 'w') as f:
+                    yaml.dump(kpis, f)
 
 
 

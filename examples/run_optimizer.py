@@ -17,6 +17,7 @@ def main():
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
     argument_parser.add_argument("--robot", "-r", help="Robot type", default="panda")
     argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
+    argument_parser.add_argument("--steps", "-s", help="Saving intermediate results", action="store_true")
 
 
     args = argument_parser.parse_args()
@@ -28,6 +29,7 @@ def main():
     output_folder = args.output_folder
     robot_name = args.robot
     overwrite = args.overwrite
+    saving_steps = args.steps
 
 
     if output_folder == "output" or overwrite:
@@ -53,7 +55,7 @@ def main():
     #optimizer.select_parameters(variance=variance, selected_parameters=panda_parameters)
     optimizer.select_parameters(variance=variance, selected_parameters=parameters[robot_name])
     optimizer.evaluate_fks(verbose=True)
-    optimizer.optimize()
+    optimizer.optimize(saving_steps=saving_steps)
     optimizer.evaluate_fks(verbose=True)
 
 

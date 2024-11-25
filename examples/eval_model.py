@@ -19,6 +19,7 @@ argument_parser.add_argument("--show", "-s", help="Show the URDF file", action="
 argument_parser.add_argument("--overlay", help="Overlay the images", action="store_true")
 argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
+argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
 
 args = argument_parser.parse_args()
 
@@ -29,9 +30,10 @@ show_urdf = args.show
 overlay = args.overlay
 output_folder = "evaluations/" + args.output_folder
 camera_setting_file = args.camera_settings
+overwrite = args.overwrite
 
 # Delete the the output folder if using the default name
-if output_folder == "output":
+if output_folder == "output" or overwrite:
     shutil.rmtree(output_folder, ignore_errors=True)
 
 if os.path.exists(output_folder):

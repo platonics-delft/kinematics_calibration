@@ -1,0 +1,1 @@
+Left position, alligned in x-axis, same z coordinate

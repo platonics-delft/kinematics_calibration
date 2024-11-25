@@ -1,10 +1,11 @@
-from typing import Optional, Tuple
-import numpy as np
 import os
-from yourdfpy import URDF
-from tkinter import filedialog
 import xml.etree.ElementTree as ET
+from tkinter import filedialog
+from typing import Optional, Tuple
+
+import numpy as np
 from PIL import Image
+from yourdfpy import URDF
 
 OFFSET_DISTANCE = 0.05
 
@@ -107,5 +108,7 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False) -
         "var_2": fk_variance_2.tolist(),
         "distance": float(distance_error),
         "height": float(fk_mean_1[2] - fk_mean_2[2]),
+        "fks_1": fks_1.tolist(),
+        "fks_2": fks_2.tolist(),
     }
     return kpis

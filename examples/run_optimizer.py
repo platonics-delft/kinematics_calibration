@@ -24,6 +24,7 @@ def main():
     data_folder = args.calibrate_on
     variance = float(args.variance)
     end_effector = args.end_effector
+    root_link = args.root_link
     output_folder = args.output_folder
     robot_name = args.robot
     overwrite = args.overwrite

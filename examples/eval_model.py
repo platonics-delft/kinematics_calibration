@@ -12,13 +12,13 @@ from calibrate_fk.utils import evaluate_model, read_data, replace_mesh_with_cyli
 
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("--urdf_file", "-u", help="Path to the URDF file")
+argument_parser.add_argument("--urdf-file", "-u", help="Path to the URDF file")
 argument_parser.add_argument("--with-mesh", "-m", help="Use meshes or replace with cylinders(default)", action="store_true") # Add a flag to enable/disable the cylinder replacement
-argument_parser.add_argument("--eval-on", "-e", help="Specify the folder to evaluate the model on")
+argument_parser.add_argument("--evalauate-on", "-e", help="Specify the folder to evaluate the model on")
 argument_parser.add_argument("--show", "-s", help="Show the URDF file", action="store_true")
 argument_parser.add_argument("--overlay", help="Overlay the images", action="store_true")
-argument_parser.add_argument("--output_folder", "-o", help="Output folder for the results", default="output")
-argument_parser.add_argument("--camera_settings", "-c", help="Camera settings file", default="camera_settings.json")
+argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
+argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
 
 args = argument_parser.parse_args()
 

@@ -60,9 +60,9 @@
   <joint name="world_iiwa_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <parent link="world"/>
-    <child link="iiwa_link_0"/>
+    <child link="base_link"/>
   </joint>
-  <link name="iiwa_link_0">
+  <link name="base_link">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.1 0 0.07"/>
       <mass value="5"/>
@@ -78,7 +78,7 @@
   </link>
   <!-- joint between link_0 and link_1 -->
   <joint name="joint_a1" type="revolute">
-    <parent link="iiwa_link_0"/>
+    <parent link="base_link"/>
     <child link="iiwa_link_1"/>
     <origin rpy="0 0 0" xyz="0 0 0.1575"/>
     <axis xyz="0 0 1"/>

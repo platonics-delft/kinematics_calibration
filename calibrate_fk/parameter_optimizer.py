@@ -1,13 +1,15 @@
 import os
-import numpy as np
-from typing import Dict, Tuple, Optional, List, Set
-import yaml
-import casadi as ca
+import tkinter as tk
 import xml.etree.ElementTree as ET
+from copy import deepcopy
+from tkinter import filedialog
+from typing import Dict, List, Optional, Set, Tuple
+
+import casadi as ca
+import numpy as np
+import yaml
 import yourdfpy
 from forwardkinematics import GenericURDFFk
-import tkinter as tk
-from tkinter import filedialog
 
 from calibrate_fk.utils import evaluate_model, read_data
 
@@ -16,6 +18,45 @@ root.withdraw()
 
 class UrdfNotLoadedException(Exception):
     pass
+
+class IterationStepCallback(ca.Callback):
+    def __init__(self, name, nx, opts={}):
+        ca.Callback.__init__(self)
+        self.nx = nx
+        self.solutions = []  # List to store intermediate solutions
+        self.construct(name, opts)
+
+
+    def get_n_in(self): 
+        return ca.nlpsol_n_out()  # Number of inputs expected by the solver
+
+    def get_n_out(self): 
+        return 1  # Number of outputs from the callback
+
+    def get_name_in(self, i): 
+        return ca.nlpsol_out(i)  # Names of inputs
+
+    def get_name_out(self, i): 
+        return "ret"  # Single output
+
+    def get_sparsity_in(self, i):
+        name = ca.nlpsol_out(i)
+        if name == "x":  # Decision variable
+            return ca.Sparsity.dense(self.nx)
+        elif name in ("f"):  # Cost
+            return ca.Sparsity.scalar()
+        elif name == "g":  # Constraints (empty in this case)
+            return ca.Sparsity(0, 0)
+        else:
+            return ca.Sparsity(0, 0)
+
+
+    def eval(self, arg):
+        x_solution = arg[ca.nlpsol_out().index("x")]
+        self.solutions.append([float(v) for v in np.array(x_solution)[:, 0].tolist()])
+        return [0]
+
+
 
 class ParameterOptimizer():
     _params: Dict[str, Dict[str, ca.SX]]
@@ -147,7 +188,7 @@ class ParameterOptimizer():
         self._data_folder = folder
         self._data_1, self._data_2 = read_data(folder=folder)
 
-    def optimize(self):
+    def optimize(self, saving_steps: bool = False):
         self.create_fk_expression()
         self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
         fks_1 = []
@@ -176,11 +217,16 @@ class ParameterOptimizer():
         parameter_list = self.list_parameters()
         # Add constraints
         problem = {'x': parameter_list, 'f': objective}
+        nx = parameter_list.size()[0]
         # set learning rate /step size
-        solver_options = {'ipopt': {
-            'print_level': 3,
-            }
+        calibration_iteration_callback = IterationStepCallback("iteration_callback", nx=nx)
+        solver_options = {
+            'ipopt': {
+                'print_level': 3,
+            },
         }
+        if saving_steps:
+            solver_options['iteration_callback'] = calibration_iteration_callback
         solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
         x0 = self.list_best_parameters()
         solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
@@ -193,8 +239,28 @@ class ParameterOptimizer():
             self._best_params[joint_name][param_name] = value
         output_folder = os.path.dirname(self._urdf_file)
         output_file = os.path.join(output_folder, f"{self._output_folder}.urdf")
-        self.modify_urdf_parameters(output_file)
+        self.modify_urdf_parameters(output_file, self._best_params)
         self._model = yourdfpy.URDF.load(output_file)
+        if saving_steps:
+            for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
+                intermediate_parameters = deepcopy(self._best_params)
+                for j in range(len(intermediate_solution)):
+                    symbol = parameter_list[j]
+                    value = intermediate_solution[j]
+                    joint_name, param_name = symbol.name().rsplit("_", 1)
+                    intermediate_parameters[joint_name][param_name] = value
+                intermediate_folder = f"{self._output_folder}/step_{i}"
+                os.makedirs(intermediate_folder, exist_ok=True)
+                intermediate_urdf = f"{intermediate_folder}/model.urdf"
+                self.modify_urdf_parameters(intermediate_urdf, intermediate_parameters)
+                intermediate_model = yourdfpy.URDF.load(intermediate_urdf)
+                kpis = evaluate_model(intermediate_model, self._data_folder, verbose=False)
+                with open(f"{intermediate_folder}/kpis.yaml", 'w') as f:
+                    yaml.dump(kpis, f)
+
+
+
+            
 
     @property
     def best_params(self):
@@ -213,15 +279,15 @@ class ParameterOptimizer():
 
 
 
-    def modify_urdf_parameters(self, output_file: str):
+    def modify_urdf_parameters(self, output_file: str, parameters: dict):
         """
         Modify the URDF file's joint parameters (xyz, rpy) based on the param_dict
         and save the modified URDF to a new file.
 
         Args:
+        - output_file (str): Path to the output URDF file.
         - param_dict (dict): Dictionary containing joint names as keys and their corresponding
                              'x', 'y', 'z', 'roll', 'pitch', 'yaw' values as sub-keys.
-        - output_file (str): Path to the output URDF file.
         """
         # Load URDF file
         tree = ET.parse(self._urdf_file)
@@ -232,11 +298,11 @@ class ParameterOptimizer():
             joint_name = joint.get('name')
 
             # If the joint exists in the dictionary, update its origin values
-            if joint_name in self._best_params:
+            if joint_name in parameters:
                 origin = joint.find('origin')
                 if origin is not None:
-                    xyz_values = f"{self._best_params[joint_name]['x']} {self._best_params[joint_name]['y']} {self._best_params[joint_name]['z']}"
-                    rpy_values = f"{self._best_params[joint_name]['roll']} {self._best_params[joint_name]['pitch']} {self._best_params[joint_name]['yaw']}"
+                    xyz_values = f"{parameters[joint_name]['x']} {parameters[joint_name]['y']} {parameters[joint_name]['z']}"
+                    rpy_values = f"{parameters[joint_name]['roll']} {parameters[joint_name]['pitch']} {parameters[joint_name]['yaw']}"
                     
                     origin.set('xyz', xyz_values)
                     origin.set('rpy', rpy_values)

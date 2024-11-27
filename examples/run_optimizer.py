@@ -1,7 +1,8 @@
-import shutil
-import os
-import sys
 import argparse
+import os
+import shutil
+import sys
+
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
 
 
@@ -13,9 +14,10 @@ def main():
     argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
     argument_parser.add_argument("--variance", "-v", help="Variance of the noise", default=0.01)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
-    argument_parser.add_argument("--root-link", "-rl", help="Root link", default="link0")
+    argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
     argument_parser.add_argument("--robot", "-r", help="Robot type", default="panda")
     argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
+    argument_parser.add_argument("--steps", "-s", help="Saving intermediate results", action="store_true")
 
 
     args = argument_parser.parse_args()
@@ -27,6 +29,8 @@ def main():
     output_folder = args.output_folder
     robot_name = args.robot
     overwrite = args.overwrite
+    saving_steps = args.steps
+
 
     if output_folder == "output" or overwrite:
         shutil.rmtree(output_folder, ignore_errors=True)
@@ -44,13 +48,14 @@ def main():
 
     parameters = {
             'panda': [f"panda_joint{i}" for i in range(1, 8)] + ['ball_joint'],
+            'panda_joints': [f"panda_joint{i}" for i in range(1, 8)],
             'iiwa14': [f"joint_a{i}" for i in range(1, 8)] + ['ball_joint'],
             'gen3lite': [f"joint_{i}" for i in range(1, 7)] + ['ball_joint'],
             }
     #optimizer.select_parameters(variance=variance, selected_parameters=panda_parameters)
     optimizer.select_parameters(variance=variance, selected_parameters=parameters[robot_name])
     optimizer.evaluate_fks(verbose=True)
-    optimizer.optimize()
+    optimizer.optimize(saving_steps=saving_steps)
     optimizer.evaluate_fks(verbose=True)
 
 

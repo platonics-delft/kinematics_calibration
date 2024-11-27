@@ -3,7 +3,10 @@ import xml.etree.ElementTree as ET
 from tkinter import filedialog
 from typing import Optional, Tuple
 
+import matplotlib.cm as cm
+import matplotlib.pyplot as plt
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
 from PIL import Image
 from yourdfpy import URDF
 
@@ -112,3 +115,53 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False) -
         "fks_2": fks_2.tolist(),
     }
     return kpis
+
+def plot_fks_iterations(points_list: list) -> None:
+    colors = ['black', 'red', 'green', 'blue', 'yellow', 'purple', 'orange', 'cyan', 'magenta', 'brown']
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+
+    # Generate unique colors for each list
+
+    # Plot each list of points with its own color
+    for i, points in enumerate(points_list):
+        color = colors[i]
+        for point in points:
+            x, y, z = point
+            # Plo the 3D scater
+            ax.scatter(x, y, z, color=color)
+        # Plot teh projection on the xyz
+
+
+    # make axis equal
+    limits = set_axes_equal(ax)
+
+
+
+    """
+    for i, points in enumerate(points_list):
+        color = colors[i]
+        for point in points:
+            x, y, z = point
+            # Plo the 3D scater
+            ax.scatter(x, y, limits[2][0]+0.1, color=color, alpha=0.3)
+            ax.scatter(x, limits[1][1]-0.1, z, color=color, alpha=0.3)
+            ax.scatter(limits[0][0]+0.1, y, z, color=color, alpha=0.3)
+    """,
+
+
+# Ensure the same unit scale in all dimensions
+def set_axes_equal(ax) -> np.ndarray:
+    """Set equal scaling for 3D axes."""
+    limits = np.array([ax.get_xlim3d(), ax.get_ylim3d(), ax.get_zlim3d()])
+    ranges = limits[:, 1] - limits[:, 0]
+    max_range = ranges.max()
+    midpoints = limits.mean(axis=1)
+
+    ax.set_xlim3d([midpoints[0] - max_range / 2, midpoints[0] + max_range / 2])
+    ax.set_ylim3d([midpoints[1] - max_range / 2, midpoints[1] + max_range / 2])
+    ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
+    return limits
+

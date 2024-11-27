@@ -246,7 +246,7 @@ class ParameterOptimizer():
                 intermediate_parameters = deepcopy(self._best_params)
                 for j in range(len(intermediate_solution)):
                     symbol = parameter_list[j]
-                    value = solution_list[j]
+                    value = intermediate_solution[j]
                     joint_name, param_name = symbol.name().rsplit("_", 1)
                     intermediate_parameters[joint_name][param_name] = value
                 intermediate_folder = f"{self._output_folder}/step_{i}"

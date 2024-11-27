@@ -1,1 +1,1 @@
-Panda 172.16.0.3 with the tool very centered in front.
+Panda 172.16.0.3, with tool exaclty in the centerline of the robot, screwed in fourth and sixth rows counting from the side closest to the pc.

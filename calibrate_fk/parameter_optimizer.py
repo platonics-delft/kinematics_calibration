@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from copy import deepcopy
 from tkinter import filedialog
 from typing import Dict, List, Optional, Set, Tuple
+from pprint import pprint
 
 import casadi as ca
 import numpy as np
@@ -61,6 +62,8 @@ class IterationStepCallback(ca.Callback):
 class ParameterOptimizer():
     _params: Dict[str, Dict[str, ca.SX]]
     _best_params: dict
+    _initial_params: dict
+    _residuals: dict
     _symbolic_fk: GenericURDFFk
     _data_folder: str
     _data_1: np.ndarray
@@ -131,6 +134,8 @@ class ParameterOptimizer():
     def create_parameters(self, selected_joints: List[str], variance: float = 0.0) -> None:
         self._params = {}
         self._best_params = {}
+        self._initial_params = {}
+        self._residuals = {}
         for joint in selected_joints:
             self._params[joint] = {
                 "x": ca.SX.sym(f"{joint}_x"),
@@ -143,12 +148,29 @@ class ParameterOptimizer():
             # use as initial guess the values from the URDF
             values = self.get_original_parameters_for_joint(joint)
             self._best_params[joint] = {
+                "x": values[0],
+                "y": values[1],
+                "z": values[2],
+                "roll": values[3],
+                "pitch": values[4],
+                "yaw": values[5],
+            }
+            self._initial_params[joint] = {
                 "x": values[0] + np.random.normal(0, variance),
                 "y": values[1] + np.random.normal(0, variance),
                 "z": values[2] + np.random.normal(0, variance),
                 "roll": values[3] + np.random.normal(0, variance),
                 "pitch": values[4] + np.random.normal(0, variance),
                 "yaw": values[5] + np.random.normal(0, variance),
+            }
+
+            self._residuals[joint] = {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0,
+                "roll": 0.0,
+                "pitch": 0.0,
+                "yaw": 0.0,
             }
 
     def get_original_parameters_for_joint(self, joint_name: str) -> List[float]:
@@ -213,6 +235,19 @@ class ParameterOptimizer():
 
         objective = fk_variance_norm_1 + fk_variance_norm_2 + distance_error# + height_error
 
+        residuals = []
+        for joint_name, joint_params in self._params.items():
+            for param_name, param in joint_params.items():
+                param_epsilon = param - self._initial_params[joint_name][param_name]
+                residuals.append(param_epsilon**2)
+        objective += 5e-5 * ca.sum1(ca.vertcat(*residuals))
+
+
+        
+
+
+
+
 
         parameter_list = self.list_parameters()
         # Add constraints
@@ -222,7 +257,7 @@ class ParameterOptimizer():
         calibration_iteration_callback = IterationStepCallback("iteration_callback", nx=nx)
         solver_options = {
             'ipopt': {
-                'print_level': 3,
+                'print_level': 0,
             },
         }
         if saving_steps:
@@ -241,6 +276,11 @@ class ParameterOptimizer():
         output_file = os.path.join(output_folder, f"{self._output_folder}.urdf")
         self.modify_urdf_parameters(output_file, self._best_params)
         self._model = yourdfpy.URDF.load(output_file)
+
+        for joint_name, joint_params in self._best_params.items():
+            for param_name, param in joint_params.items():
+                param_residual = param - self._initial_params[joint_name][param_name]
+                self._residuals[joint_name][param_name] = param_residual
         if saving_steps:
             for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
                 intermediate_parameters = deepcopy(self._best_params)

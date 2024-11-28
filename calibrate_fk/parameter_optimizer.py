@@ -80,6 +80,9 @@ class ParameterOptimizer():
     def __init__(self, output_folder: str):
         self._output_folder = output_folder
 
+    def set_offset_distance(self, offset_distance: float):
+        self._offset_distance = offset_distance
+
     def load_model(self, filename: Optional[str] = None) -> None:
         if filename is None:
             default_model_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../assets")

@@ -12,7 +12,7 @@ import yaml
 import yourdfpy
 from forwardkinematics import GenericURDFFk
 
-from calibrate_fk.utils import evaluate_model, read_data
+from calibrate_fk.utils import evaluate_model, read_data, replace_mesh_with_cylinder
 
 root = tk.Tk()
 root.withdraw()
@@ -69,10 +69,13 @@ class ParameterOptimizer():
     _data_1: np.ndarray
     _data_2: np.ndarray
     _offset_distance: float = 0.05
+    _regulizer_weight: float = 1e-4
+
     _urdf: str
     _urdf_file: str
     _end_link: str
     _output_folder : str
+    _nb_steps: int = 0
 
     def __init__(self, output_folder: str):
         self._output_folder = output_folder
@@ -240,7 +243,7 @@ class ParameterOptimizer():
             for param_name, param in joint_params.items():
                 param_epsilon = param - self._initial_params[joint_name][param_name]
                 residuals.append(param_epsilon**2)
-        objective += 5e-5 * ca.sum1(ca.vertcat(*residuals))
+        objective += self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
 
 
         
@@ -259,12 +262,14 @@ class ParameterOptimizer():
             'ipopt': {
                 'print_level': 0,
             },
+
         }
         if saving_steps:
             solver_options['iteration_callback'] = calibration_iteration_callback
         solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
         x0 = self.list_best_parameters()
         solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
+        self._nb_steps = solver.stats()['iter_count']
         solution_list = np.array(solution['x'])[:, 0].tolist()
         for i in range(len(solution_list)):
             symbol = parameter_list[i]
@@ -283,20 +288,25 @@ class ParameterOptimizer():
                 self._residuals[joint_name][param_name] = param_residual
         if saving_steps:
             for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
-                intermediate_parameters = deepcopy(self._best_params)
-                for j in range(len(intermediate_solution)):
-                    symbol = parameter_list[j]
-                    value = intermediate_solution[j]
-                    joint_name, param_name = symbol.name().rsplit("_", 1)
-                    intermediate_parameters[joint_name][param_name] = value
-                intermediate_folder = f"{self._output_folder}/step_{i}"
-                os.makedirs(intermediate_folder, exist_ok=True)
-                intermediate_urdf = f"{intermediate_folder}/model.urdf"
-                self.modify_urdf_parameters(intermediate_urdf, intermediate_parameters)
-                intermediate_model = yourdfpy.URDF.load(intermediate_urdf)
-                kpis = evaluate_model(intermediate_model, self._data_folder, verbose=False)
-                with open(f"{intermediate_folder}/kpis.yaml", 'w') as f:
-                    yaml.dump(kpis, f)
+                self.save_intermediate_solution(intermediate_solution, parameter_list, i)
+
+
+    def save_intermediate_solution(self, intermediate_solution: List[float], parameter_list: List[ca.SX], i: int):
+            intermediate_parameters = deepcopy(self._best_params)
+            for j in range(len(intermediate_solution)):
+                symbol = parameter_list[j]
+                value = intermediate_solution[j]
+                joint_name, param_name = symbol.name().rsplit("_", 1)
+                intermediate_parameters[joint_name][param_name] = value
+            intermediate_folder = f"{self._output_folder}/step_{i}"
+            os.makedirs(intermediate_folder, exist_ok=True)
+            intermediate_urdf = f"{intermediate_folder}/model.urdf"
+            self.modify_urdf_parameters(intermediate_urdf, intermediate_parameters)
+            replace_mesh_with_cylinder(intermediate_urdf, intermediate_urdf)
+            intermediate_model = yourdfpy.URDF.load(intermediate_urdf)
+            kpis = evaluate_model(intermediate_model, self._data_folder, verbose=False)
+            with open(f"{intermediate_folder}/kpis.yaml", 'w') as f:
+                yaml.dump(kpis, f)
 
 
 
@@ -313,6 +323,7 @@ class ParameterOptimizer():
 
     def evaluate_fks(self, verbose: bool = False) -> dict:
         kpis = evaluate_model(self._model, self._data_folder, verbose=verbose)
+        kpis['nb_steps'] = self._nb_steps
         with open(f"{self._output_folder}/kpis.yaml", 'w') as f:
             yaml.dump(kpis, f)
         return kpis

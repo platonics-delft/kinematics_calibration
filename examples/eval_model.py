@@ -38,10 +38,8 @@ output_folder = "evaluations/" + args.output_folder
 camera_setting_file = args.camera_settings
 overwrite = args.overwrite
 intermediate = args.intermediate
-input_folder = urdf_file.split("/")[-1][:-5]
 
 assert os.path.exists(urdf_file), f"URDF file {urdf_file} not found."
-assert os.path.exists(input_folder), f"Input folder {input_folder} not found."
 
 # Delete the the output folder if using the default name
 if output_folder == "output" or overwrite:
@@ -137,19 +135,4 @@ if show_urdf and not eval_folder:
 
     print(f"Camera settings saved in: {camera_setting_file}")
 
-if intermediate:
-    ax = None
-    all_fks = []
-    for step in [1, 20, 90]:
-        step_folder = f"{input_folder}/step_{step}"
-        assert os.path.exists(step_folder), f"Step folder {step_folder} not found."
-        kpis_step_file = f"{step_folder}/kpis.yaml"
-        kpis = yaml.load(open(kpis_step_file, 'r'), Loader=yaml.FullLoader)
-        fks_1 = kpis['fks_1'][0:5]
-        fks_2 = kpis['fks_2'][0:5]
-        fks = fks_1 #+ fks_2
-        all_fks.append(fks)
-
-    ax = plot_fks_iterations(all_fks)
-    plt.show()
 

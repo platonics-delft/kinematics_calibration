@@ -1,12 +1,11 @@
 import os
 import xml.etree.ElementTree as ET
 from tkinter import filedialog
-from typing import Optional, Tuple
+import yaml
+from typing import Optional, Tuple, List
 
-import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
 from PIL import Image
 from yourdfpy import URDF
 
@@ -34,7 +33,7 @@ def read_data(folder: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
     data_2 = np.loadtxt(file_path_2, delimiter=",")
     return data_1, data_2
 
-def replace_mesh_with_cylinder(urdf_file) -> str:
+def replace_mesh_with_cylinder(urdf_file, out_file: str) -> str:
     # Parse the URDF file
     tree = ET.parse(urdf_file)
     root = tree.getroot()
@@ -61,10 +60,9 @@ def replace_mesh_with_cylinder(urdf_file) -> str:
                     geometry.append(cylinder)
 
     # Save the modified URDF to a new file
-    modified_urdf = urdf_file.replace(".urdf", "_cylinders.urdf")
-    tree.write(modified_urdf)
-    print(f"Modified URDF saved as: {modified_urdf}")
-    return modified_urdf
+    tree.write(out_file)
+    print(f"Modified URDF saved as: {out_file}")
+    return out_file
 
 def overlay_images(images: list , output_path: str):
     width, height = images[0].shape[1], images[0].shape[0]
@@ -164,4 +162,77 @@ def set_axes_equal(ax) -> np.ndarray:
     ax.set_ylim3d([midpoints[1] - max_range / 2, midpoints[1] + max_range / 2])
     ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
     return limits
+
+def compute_statistics(model: URDF, data_folder: str) -> tuple:
+    print(f"Data folder {data_folder}")
+    data_hole_0, data_hole_1 = read_data(data_folder)
+
+    fks_1 = np.zeros((len(data_hole_0), 3))
+    fks_2 = np.zeros((len(data_hole_1), 3))
+    for i, joint_angles in enumerate(data_hole_0):
+        model.update_cfg(joint_angles)
+        fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+        fks_1[i] = np.array(fk[:3, 3]).flatten()
+    for i, joint_angles in enumerate(data_hole_1):
+        model.update_cfg(joint_angles)
+        fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+        fks_2[i] = np.array(fk[:3, 3]).flatten()
+
+
+    fk_mean_1 = np.mean(fks_1, axis=0)
+    fk_mean_2 = np.mean(fks_2, axis=0)
+    fk_variance_1 = np.sum(np.var(fks_1, axis=0))
+    fk_variance_2 = np.sum(np.var(fks_2, axis=0))
+    distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - OFFSET_DISTANCE)
+    std_dev = np.sqrt(fk_variance_1 + fk_variance_2)
+    return float(distance_error), std_dev
+
+
+
+def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str]) -> None:
+
+    steps = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
+    nb_steps = kpis["nb_steps"]
+
+    steps = list(range(nb_steps))
+    distances_train = []
+    distances_test = [[] for _ in data_folders_test]
+    variances_train = []
+    variances_test = [[] for _ in data_folders_test]
+
+    for step in steps:
+        model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
+        distance_error, std_dev = compute_statistics(model_step, data_folder_train)
+        distances_train.append(distance_error)
+        variances_train.append(std_dev)
+        for i, data_folder_test in enumerate(data_folders_test):
+            distance_error, std_dev = compute_statistics(model_step, data_folder_test)
+            distances_test[i].append(distance_error)
+            variances_test[i].append(std_dev)
+    # 2 plots
+    fig, ax = plt.subplots(1, 2)
+    # make log scale
+    ax[0].set_yscale("log")
+    ax[0].plot(steps, distances_train, label="Train", color='orange')
+    for i, distances in enumerate(distances_test):
+        ax[0].plot(steps, distances, label=f"Test {i}", color='blue', alpha=0.5)
+    # set legend
+    ax[0].legend()
+    ax[0].set_xlabel("Step")
+
+    ax[1].set_yscale("log")
+    ax[1].plot(steps, variances_train, label="Train", color='orange')
+    for i, variances in enumerate(variances_test):
+        ax[1].plot(steps, variances, label=f"Test {i}", color='blue', alpha=0.5)
+
+    ax[1].legend()
+    ax[1].set_xlabel("Step")
+
+
+    plt.show()
+
+
+
+
 

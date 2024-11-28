@@ -74,7 +74,7 @@ def overlay_images(images: list , output_path: str):
 
     result_image.save(output_path)
 
-def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False) -> dict:
+def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, offset_distance: float=0.05) -> dict:
 
     data_hole_0, data_hole_1 = read_data(data_folder)
 
@@ -94,7 +94,7 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False) -
     fk_variance_1 = np.round(np.var(fks_1, axis=0), decimals=10)
     fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=10)
     fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=10)
-    distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - OFFSET_DISTANCE, decimals=10)
+    distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance, decimals=10)
     if verbose:
         print(f"Mean_1: {fk_mean_1}")
         print(f"Variance_1: {fk_variance_1}")
@@ -163,7 +163,7 @@ def set_axes_equal(ax) -> np.ndarray:
     ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
     return limits
 
-def compute_statistics(model: URDF, data_folder: str) -> tuple:
+def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0.05) -> tuple:
     print(f"Data folder {data_folder}")
     data_hole_0, data_hole_1 = read_data(data_folder)
 
@@ -183,53 +183,82 @@ def compute_statistics(model: URDF, data_folder: str) -> tuple:
     fk_mean_2 = np.mean(fks_2, axis=0)
     fk_variance_1 = np.sum(np.var(fks_1, axis=0))
     fk_variance_2 = np.sum(np.var(fks_2, axis=0))
-    distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - OFFSET_DISTANCE)
+    average_z_1 = np.mean(fks_1[:, 2])
+    average_z_2 = np.mean(fks_2[:, 2])
+    distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
     std_dev = np.sqrt(fk_variance_1 + fk_variance_2)
-    return float(distance_error), std_dev
+    average_z = np.mean([average_z_1, average_z_2])
+    return float(distance_error), std_dev, average_z
 
 
 
-def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str]) -> None:
+def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance) -> None:
 
-    steps = [0, 1, 2, 3, 4, 5, 6, 7, 8]
     kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
     nb_steps = kpis["nb_steps"]
+    train_name = data_folder_train.split("/")[-1]
 
     steps = list(range(nb_steps))
     distances_train = []
     distances_test = [[] for _ in data_folders_test]
     variances_train = []
     variances_test = [[] for _ in data_folders_test]
+    average_z_train = []
+    average_z_test = [[] for _ in data_folders_test]
+    print(f"Offset distance: {offset_distance}")
+
+    std_devs_z = []
 
     for step in steps:
+        print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
-        distance_error, std_dev = compute_statistics(model_step, data_folder_train)
+        distance_error, std_dev, average_z = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
+        average_z_train.append(average_z)
         distances_train.append(distance_error)
         variances_train.append(std_dev)
+        average_z_all = []
         for i, data_folder_test in enumerate(data_folders_test):
-            distance_error, std_dev = compute_statistics(model_step, data_folder_test)
+            distance_error, std_dev, average_z = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
+            average_z_all.append(average_z)
+        std_dev_z = np.std(np.array(average_z_all))
+        std_devs_z.append(std_dev_z)
+
+
+
     # 2 plots
-    fig, ax = plt.subplots(1, 2)
+    fig, ax = plt.subplots(1, 3)
     # make log scale
     ax[0].set_yscale("log")
-    ax[0].plot(steps, distances_train, label="Train", color='orange')
+    ax[0].plot(steps, distances_train, label=train_name, color='black')
     for i, distances in enumerate(distances_test):
-        ax[0].plot(steps, distances, label=f"Test {i}", color='blue', alpha=0.5)
+        name = data_folders_test[i].split("/")[-1]
+        ax[0].plot(steps, distances, label=f"{name}", alpha=0.5)
     # set legend
     ax[0].legend()
     ax[0].set_xlabel("Step")
-    ax[0].set_ylim(1e-6, 1e-2)
+    #ax[0].set_ylim(1e-6, 1e-2)
+    # set title
+    ax[0].set_title("Disortion Error")
 
     ax[1].set_yscale("log")
-    ax[1].plot(steps, variances_train, label="Train", color='orange')
+    ax[1].plot(steps, variances_train, label=train_name, color='black')
     for i, variances in enumerate(variances_test):
-        ax[1].plot(steps, variances, label=f"Test {i}", color='blue', alpha=0.5)
+        name = data_folders_test[i].split("/")[-1]
+        ax[1].plot(steps, variances, label=f"{name}", alpha=0.5)
 
     ax[1].legend()
     ax[1].set_xlabel("Step")
-    ax[1].set_ylim(1e-4, 1e-2)
+    #ax[1].set_ylim(1e-4, 3e-2)
+    ax[1].set_title("Consistency Error")
+
+    ax[2].set_yscale("log")
+    ax[2].plot(steps, std_devs_z, color='black')
+    ax[2].legend()
+    ax[2].set_xlabel("Step")
+    #ax[2].set_ylim(1e-4, 1e-1)
+    ax[2].set_title("Height consistency")
 
 
     plt.show()

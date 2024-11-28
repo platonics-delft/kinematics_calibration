@@ -21,6 +21,7 @@ def main():
     argument_parser.add_argument("--steps", "-s", help="Saving intermediate results", action="store_true")
     argument_parser.add_argument("--number-samples", "-n", help="Number of samples to use", default=None)
     argument_parser.add_argument("--offset-distance", "-d", help="Distance to offset the end effector", default=0.05)
+    argument_parser.add_argument("--regularizer", "-reg", help="Regularizer for the optimization", default=1e-4)
 
 
 
@@ -35,7 +36,8 @@ def main():
     overwrite = args.overwrite
     saving_steps = args.steps
     number_samples = args.number_samples
-    offset_distance = args.offset_distance
+    offset_distance = float(args.offset_distance)
+    regularizer = float(args.regularizer)
     if number_samples is not None:
         number_samples = int(number_samples)
 
@@ -60,6 +62,7 @@ def main():
             'saving_steps': saving_steps,
             'number_samples': number_samples,
             'offset_distance': offset_distance,
+            'regularizer': regularizer,
             }
     with open(f"{output_folder}/config.yaml", "w") as f:
         yaml.dump(config, f)
@@ -67,6 +70,7 @@ def main():
 
     optimizer = ParameterOptimizer(output_folder)
     optimizer.set_offset_distance(offset_distance)
+    optimizer.set_regulizer_weight(regularizer)
     optimizer.load_model(urdf_file)
     optimizer.read_data(data_folder, number_samples=number_samples)
     optimizer.create_symbolic_fk(root_link, end_effector)

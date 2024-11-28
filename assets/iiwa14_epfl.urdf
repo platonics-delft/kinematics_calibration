@@ -268,10 +268,10 @@
     </visual>
   </link>
   <joint name="ball_joint" type="fixed">
-    <origin rpy="0 0 0" xyz="0 0 0.03"/>
-    <!--origin rpy="0 0 0" xyz="0 0 0.1034"/-->
-    <parent link="iiwa_link_ee"/>
-    <child link="ball_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="-6.92119286580406e-05 -0.00018859822675517448 0.03542481345977316" />
+    
+    <parent link="iiwa_link_ee" />
+    <child link="ball_link" />
   </joint>
   <!-- Load Gazebo lib and set the robot namespace -->
 </robot>

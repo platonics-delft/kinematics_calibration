@@ -209,9 +209,13 @@ class ParameterOptimizer():
                 parameter_list.append(param)
         return np.array(parameter_list)
 
-    def read_data(self, folder: str) -> None:
+    def read_data(self, folder: str, number_samples: Optional[int] = None) -> None:
         self._data_folder = folder
         self._data_1, self._data_2 = read_data(folder=folder)
+        # pick 10 random samples from each set
+        if number_samples is not None:
+            self._data_1 = self._data_1[np.random.choice(self._data_1.shape[0], number_samples, replace=False)]
+            self._data_2 = self._data_2[np.random.choice(self._data_2.shape[0], number_samples, replace=False)]
 
     def optimize(self, saving_steps: bool = False):
         self.create_fk_expression()

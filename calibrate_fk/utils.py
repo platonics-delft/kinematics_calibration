@@ -220,6 +220,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     # set legend
     ax[0].legend()
     ax[0].set_xlabel("Step")
+    ax[0].set_ylim(1e-6, 1e-2)
 
     ax[1].set_yscale("log")
     ax[1].plot(steps, variances_train, label="Train", color='orange')
@@ -228,6 +229,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
 
     ax[1].legend()
     ax[1].set_xlabel("Step")
+    ax[1].set_ylim(1e-4, 1e-2)
 
 
     plt.show()

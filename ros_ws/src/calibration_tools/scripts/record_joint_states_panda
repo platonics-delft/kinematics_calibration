@@ -13,9 +13,9 @@ class JointStatesRecorderPanda(JointStatesRecorder):
     def __init__(self, joint_state_topic_name: str, folder_name: str, dof: int):
         super().__init__(joint_state_topic_name, folder_name, dof)
         self._pykeyboard.stop()
-        hostname = "172.16.0.2"
-        username = "franka2"
-        password = "pandaisgreat"
+        hostname = "172.16.0.3"
+        username = "franka_hri"
+        password = "Panda2022"
         self._data = {"hole_0": [], "hole_1": [], 'hole_0_pose': [], 'hole_1_pose': []}
         self.desk = panda_py.Desk(hostname, username, password)
         self.desk.listen(self._on_press_panda)

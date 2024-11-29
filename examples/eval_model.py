@@ -17,27 +17,25 @@ from calibrate_fk.utils import (evaluate_model, overlay_images,
 
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("--urdf-file", "-u", help="Path to the URDF file")
-argument_parser.add_argument("--with-mesh", "-m", help="Use meshes or replace with cylinders(default)", action="store_true") # Add a flag to enable/disable the cylinder replacement
+argument_parser.add_argument("--without-mesh", "-m", help="Use meshes(default) or replace with cylinders", action="store_true") # Add a flag to enable/disable the cylinder replacement
 argument_parser.add_argument("--evalauate-on", "-e", help="Specify the folder to evaluate the model on")
-argument_parser.add_argument("--show", "-s", help="Show the URDF file", action="store_true")
+#argument_parser.add_argument("--show", "-s", help="Show the URDF file", action="store_true")
 argument_parser.add_argument("--overlay", help="Overlay the images", action="store_true")
 argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
 argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
-argument_parser.add_argument("--intermediate", "-i", help="Show intermediate steps", action="store_true")
 
 
 args = argument_parser.parse_args()
 
 urdf_file = args.urdf_file
-with_mesh = args.with_mesh
+with_mesh = not args.without_mesh
 eval_folder = args.evalauate_on
-show_urdf = args.show
+show_urdf = True
 overlay = args.overlay
 output_folder = "evaluations/" + args.output_folder
 camera_setting_file = args.camera_settings
 overwrite = args.overwrite
-intermediate = args.intermediate
 
 assert os.path.exists(urdf_file), f"URDF file {urdf_file} not found."
 

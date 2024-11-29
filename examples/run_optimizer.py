@@ -13,7 +13,7 @@ def main():
     argument_parser.add_argument("--urdf-file", "-u", help="Path to the URDF file")
     argument_parser.add_argument("--calibrate-on", "-e", help="Specify the folder to evaluate the model on")
     argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
-    argument_parser.add_argument("--variance", "-v", help="Variance of the noise", default=0.01)
+    argument_parser.add_argument("--variance", "-v", help="Variance of the noise", default=0.00)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
     argument_parser.add_argument("--robot", "-r", help="Robot type", default="panda")

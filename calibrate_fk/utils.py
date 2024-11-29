@@ -9,6 +9,14 @@ import numpy as np
 from PIL import Image
 from yourdfpy import URDF
 
+
+plt.rcParams.update({
+    "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
+    "text.usetex": True,          # Use LaTeX for text rendering
+    "font.family": "serif",       # Use a serif font
+    "pgf.rcfonts": False,         # Disable using Matplotlib's default font settings
+})
+
 OFFSET_DISTANCE = 0.05
 
 def read_data(folder: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
@@ -244,41 +252,85 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
 
 
 
-    # 2 plots
-    fig, ax = plt.subplots(1, 3)
+    fig, ax = plt.subplots(1, 1)
     # make log scale
-    ax[0].set_yscale("log")
-    ax[0].plot(steps, distances_train, label=train_name, color='black')
+    ax.set_yscale("log")
+    ax.plot(steps, distances_train, label="train", color='blue')
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
-        ax[0].plot(steps, distances, label=f"{name}", alpha=0.5)
-    # set legend
-    ax[0].legend()
-    ax[0].set_xlabel("Step")
-    ax[0].set_ylim(1e-6, 1e-2)
-    # set title
-    ax[0].set_title("Disortion Error")
+        #ax[0].plot(steps, distances, label=f"{name.replace('_', '-')}", alpha=0.5)
+        if i == 0:
+            ax.plot(steps, distances, label="validation", color='orange', alpha=0.5)
+        else:
+            ax.plot(steps, distances, color='orange', alpha=0.5)
 
-    ax[1].set_yscale("log")
-    ax[1].plot(steps, variances_train, label=train_name, color='black')
+    # set legend
+    #ax.legend()
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Distance error [m]")
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    # only show the step at every 5th
+    ax.xaxis.set_major_locator(plt.MultipleLocator(5))
+
+    ax.set_ylim(1e-7, 1e-2)
+    # set title
+
+    # the figure should have tight margins but the legend should not be cut off
+    # make size of figure suitable for journal paper IEEE standard
+    fig.set_size_inches(3.487/2, 1.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.31)
+
+    plt.savefig(f"{model_folder}/distortion.png")
+    plt.savefig(f"{model_folder}/distortion.pgf")
+
+    fig, ax = plt.subplots(1, 1)
+
+    ax.set_yscale("log")
+    #ax[1].plot(steps, variances_train, label=train_name.replace('_', '-'), color='black')
+    ax.plot(steps, variances_train, label="train", color='blue')
     for i, variances in enumerate(variances_test):
         name = data_folders_test[i].split("/")[-1]
-        ax[1].plot(steps, variances, label=f"{name}", alpha=0.5)
+        #ax[1].plot(steps, variances, label=f"{name.replace('_', '-')}", alpha=0.5)
+        if i == 0:
+            ax.plot(steps, variances, label="validation", color='orange', alpha=0.5)
+        else:
+            ax.plot(steps, variances, color='orange', alpha=0.5)
 
-    ax[1].legend()
-    ax[1].set_xlabel("Step")
-    ax[1].set_ylim(1e-4, 3e-2)
-    ax[1].set_title("Consistency Error")
+    ax.legend()
+    # can you put the x-axis label at the right end below the figure?
+    ax.set_xlabel("Step")
+    ax.set_ylabel("SD [m]")
+
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    # only show the step at every 5th
+    ax.xaxis.set_major_locator(plt.MultipleLocator(5))
+    ax.set_ylim(1e-4, 3e-2)
+
+    # make size of figure suitable for journal paper IEEE standard
+    fig.set_size_inches(3.487/2, 1.5)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+
+    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.31)
+
+    plt.savefig(f"{model_folder}/consistency.png")
+    plt.savefig(f"{model_folder}/consistency.pgf")
+    """
 
     ax[2].set_yscale("log")
-    ax[2].plot(steps, std_devs_z, color='black')
-    ax[2].legend()
-    ax[2].set_xlabel("Step")
+    ax[2].plot(steps, std_devs_z, color='blue')
+    #ax[2].legend()
+    #ax[2].set_xlabel("Step")
+    ax[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax[2].set_ylim(1e-4, 1e-1)
     ax[2].set_title("Height consistency")
+    """
 
 
-    plt.show()
+    # Can you export each axes to a separate file?
 
 
 

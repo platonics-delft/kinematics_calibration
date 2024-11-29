@@ -3,16 +3,16 @@ import json
 import os
 import shutil
 import sys
+from pprint import pprint
 from io import BytesIO
 
-import matplotlib.pyplot as plt
 import numpy as np
 import yaml
 import yourdfpy
 from PIL import Image
 
-from calibrate_fk.utils import (evaluate_model, overlay_images,
-                                plot_fks_iterations, read_data,
+from calibrate_fk.utils import (compute_statistics, overlay_images,
+                                read_data,
                                 replace_mesh_with_cylinder)
 
 argument_parser = argparse.ArgumentParser()
@@ -24,6 +24,7 @@ argument_parser.add_argument("--overlay", help="Overlay the images", action="sto
 argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
 argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
+argument_parser.add_argument("--offset-distance", "-d", help="Offset distance for the hole", default=0.05, type=float)
 
 
 args = argument_parser.parse_args()
@@ -35,6 +36,7 @@ show_urdf = True
 overlay = args.overlay
 output_folder = "evaluations/" + args.output_folder
 camera_setting_file = args.camera_settings
+offset_distance = float(args.offset_distance)
 overwrite = args.overwrite
 
 assert os.path.exists(urdf_file), f"URDF file {urdf_file} not found."
@@ -84,9 +86,19 @@ if eval_folder:
     q_hole_0, q_hole_1 = read_data(eval_folder)
     images = []
     q_show = q_hole_0[0]
+    kpis = compute_statistics(robot, eval_folder, offset_distance=offset_distance)
+    # kpis_core should be the same but without the keys fks_1 and fks_2
+    kpis_core = {k: v for k, v in kpis.items() if k not in ['fks_1', 'fks_2']}
+    pprint(kpis_core)
+    with open(f"{output_folder}/kpis.yaml", 'w') as f:
+        # convert all numpy arrays to list
+        kpis = {k: v.tolist() if isinstance(v, np.ndarray) else v for k, v in kpis.items()}
+        # convert all numpy floats to python floats
+        kpis = {k: float(v) if isinstance(v, np.float64) else v for k, v in kpis.items()}
+        yaml.dump(kpis, f)
     if show_urdf:
         robot.update_cfg(q_show)
-        print("Move the view such that you can nicely see the end-effector.")
+        print("Move the view such that you can nicely see the end-effector. Press q in the visualization window to save the camera settings.")
         robot.show()
         saved_camera = {
             'transform': robot.scene.camera_transform.tolist(), 
@@ -97,9 +109,6 @@ if eval_folder:
         with open(camera_setting_file, 'w') as f:
             json.dump(saved_camera, f)
 
-    kpis = evaluate_model(robot, eval_folder, verbose=True)
-    with open(f"{output_folder}/kpis.yaml", 'w') as f:
-        yaml.dump(kpis, f)
 
 
     if overlay:

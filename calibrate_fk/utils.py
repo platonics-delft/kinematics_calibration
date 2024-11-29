@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 from tkinter import filedialog
 import yaml
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -163,7 +163,7 @@ def set_axes_equal(ax) -> np.ndarray:
     ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
     return limits
 
-def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0.05) -> tuple:
+def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
     print(f"Data folder {data_folder}")
     data_hole_0, data_hole_1 = read_data(data_folder)
 
@@ -186,9 +186,20 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
     average_z_1 = np.mean(fks_1[:, 2])
     average_z_2 = np.mean(fks_2[:, 2])
     distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
-    std_dev = np.sqrt(fk_variance_1 + fk_variance_2)
+    std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2)
     average_z = np.mean([average_z_1, average_z_2])
-    return float(distance_error), std_dev, average_z
+    statistics = {
+        "mean_1": fk_mean_1,
+        "std_dev_1": np.sqrt(fk_variance_1),
+        "mean_2": fk_mean_2,
+        "std_dev_2": np.sqrt(fk_variance_2),
+        "distance_error": float(distance_error),
+        "height_error": average_z,
+        "fks_1": fks_1,
+        "fks_2": fks_2,
+        "std_dev_fk": std_dev_fk,
+    }
+    return statistics
 
 
 
@@ -212,13 +223,19 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     for step in steps:
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
-        distance_error, std_dev, average_z = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
+        statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
+        distance_error = statistics["distance_error"]
+        std_dev = statistics["std_dev_fk"]
+        average_z = statistics["height_error"]
         average_z_train.append(average_z)
         distances_train.append(distance_error)
         variances_train.append(std_dev)
         average_z_all = []
         for i, data_folder_test in enumerate(data_folders_test):
-            distance_error, std_dev, average_z = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
+            statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
+            distance_error = statistics["distance_error"]
+            std_dev = statistics["std_dev_fk"]
+            average_z = statistics["height_error"]
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
             average_z_all.append(average_z)
@@ -238,7 +255,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     # set legend
     ax[0].legend()
     ax[0].set_xlabel("Step")
-    #ax[0].set_ylim(1e-6, 1e-2)
+    ax[0].set_ylim(1e-6, 1e-2)
     # set title
     ax[0].set_title("Disortion Error")
 
@@ -250,14 +267,14 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
 
     ax[1].legend()
     ax[1].set_xlabel("Step")
-    #ax[1].set_ylim(1e-4, 3e-2)
+    ax[1].set_ylim(1e-4, 3e-2)
     ax[1].set_title("Consistency Error")
 
     ax[2].set_yscale("log")
     ax[2].plot(steps, std_devs_z, color='black')
     ax[2].legend()
     ax[2].set_xlabel("Step")
-    #ax[2].set_ylim(1e-4, 1e-1)
+    ax[2].set_ylim(1e-4, 1e-1)
     ax[2].set_title("Height consistency")
 
 

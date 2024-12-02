@@ -27,6 +27,7 @@ class JointStatesRecorder():
             self.log(f"Creating folder {self._folder_name}")
             os.mkdir(self._folder_name)
             self._comments = []
+            self._data = {"hole_0": [], "hole_1": [], 'hole_0_pose': [], 'hole_1_pose': []}
 
         self.print_info()
         self.print_status()
@@ -87,9 +88,10 @@ class JointStatesRecorder():
         self.print_status()
 
     def print_status(self):
-        self.log(f"Active hole: {self.hole_name()}")
         self.log(f"Point hole 0: {len(self._data['hole_0'])}, Points hole 1: {len(self._data['hole_1'])}")
-        self.log(f"Comments {self._comments}")
+        self.log(f"Active hole: {self.hole_name()}")
+        self.log("------------------------------------------")
+        # self.log(f"Comments {self._comments}")
 
     def save_data(self):
         for hole_name, data in self._data.items():

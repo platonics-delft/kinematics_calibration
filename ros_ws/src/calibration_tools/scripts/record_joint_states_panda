@@ -47,7 +47,7 @@ class JointStatesRecorderPanda(JointStatesRecorder):
         ])
 
     def vibrate(self, duration=0.2, times=1):
-        self.log(f"Vibrating for {duration} seconds {times} times.")
+        # self.log(f"Vibrating for {duration} seconds {times} times.")
         for _ in range(times):
             self.vibration_pub.publish(Float32(data=duration))
             time.sleep(duration*2)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--joint-state-topic-name", "-j", help="Topic where the joint state is published")
     argument_parser.add_argument("--robot-name", "-r", help="name of the robot that you are calibrating, e.g. panda_4")
-    argument_parser.add_argument("--tool-position", "-t", help="postion of the tool on the table for the franka")
+    argument_parser.add_argument("--tool-position-on-table", "-t", help="postion of the tool on the table for the franka")
     argument_parser.add_argument("--config-file", "-c", help="config file with the ip, admin and password of the robots")
 
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     joint_state_topic_name = args.joint_state_topic_name
     robot_name = args.robot_name
     config_file = args.config_file
-    tool_position = args.tool_position
+    tool_position = args.tool_position_on_table
     package=os.path.join(rospkg.RosPack().get_path('calibration_tools'))
     data_folder =  os.path.join(package, os.pardir, os.pardir, os.pardir, 'data', robot_name, tool_position) 
     print(data_folder)

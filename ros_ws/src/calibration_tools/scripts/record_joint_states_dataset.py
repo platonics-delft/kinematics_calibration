@@ -4,7 +4,8 @@ import os
 import rospy
 import numpy as np
 import pynput
-
+import argparse
+import rospkg
 from sensor_msgs.msg import JointState
 
 class JointStatesRecorder():
@@ -116,9 +117,22 @@ class JointStatesRecorder():
 
 if __name__ == "__main__":
     joint_state_topic_name = sys.argv[1]
-    folder_name = sys.argv[2]
-    dof = int(sys.argv[3])
-    node = JointStatesRecorder(joint_state_topic_name, folder_name, dof)
+    argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
+    argument_parser.add_argument("--joint-state-topic-name", "-j", help="Topic where the joint state is published")
+    argument_parser.add_argument("--robot-name", "-r", help="name of the robot that you are calibrating, e.g. kuka_1")
+    argument_parser.add_argument("--tool-position-on-table", "-t", help="postion of the tool on the table for the franka")
+    argument_parser.add_argument("--robot-dof", "-dof", help="Degree of freedom of the robot", default=7)
+    args = argument_parser.parse_args()
+    joint_state_topic_name = args.joint_state_topic_name
+    robot_name = args.robot_name
+    tool_position = args.tool_position_on_table
+    dof = args.robot_dof
+    package=os.path.join(rospkg.RosPack().get_path('calibration_tools'))
+    data_folder =  os.path.join(package, os.pardir, os.pardir, os.pardir, 'data', robot_name, tool_position) 
+    print(data_folder)
+    print("Joint_state", joint_state_topic_name)
+    print("Robot name:",robot_name)
+    node = JointStatesRecorder(joint_state_topic_name, data_folder, dof)
     try:
         node.run()
     except rospy.ROSInterruptException:

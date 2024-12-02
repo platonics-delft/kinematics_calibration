@@ -7,7 +7,11 @@ import numpy as np
 from std_msgs.msg import Float32
 from geometry_msgs.msg import PoseStamped
 from record_joint_states_dataset import JointStatesRecorder
+import rospkg
+import os
+import argparse
 import panda_py
+import dynamic_reconfigure.client
 
 
 class JointStatesRecorderPanda(JointStatesRecorder):
@@ -17,13 +21,19 @@ class JointStatesRecorderPanda(JointStatesRecorder):
         hostname = config['hostname']
         username = config['username']
         password = config['password']
-        self._data = {"hole_0": [], "hole_1": [], 'hole_0_pose': [], 'hole_1_pose': []}
         self.desk = panda_py.Desk(hostname, username, password)
         self.desk.listen(self._on_press_panda)
         self.vibration_pub = rospy.Publisher("/haptic_feedback", Float32, queue_size=0)
         self.pose_subsciber = rospy.Subscriber("/cartesian_pose", PoseStamped, self._pose_callback)
         self._last_time_pressed = rospy.Time.now()
         self._pose = np.zeros(7)
+        self.set_K = dynamic_reconfigure.client.Client('/dynamic_reconfigure_compliance_param_node', config_callback=None)
+        self.set_K.update_configuration({"translational_stiffness_X": 0})
+        self.set_K.update_configuration({"translational_stiffness_Y": 0})
+        self.set_K.update_configuration({"translational_stiffness_Z": 0})
+        self.set_K.update_configuration({"rotational_stiffness_X": 0}) 
+        self.set_K.update_configuration({"rotational_stiffness_Y": 0}) 
+        self.set_K.update_configuration({"rotational_stiffness_Z": 0})
 
     def _pose_callback(self, pose: PoseStamped) -> None:
         self._pose = np.array([
@@ -47,6 +57,7 @@ class JointStatesRecorderPanda(JointStatesRecorder):
         if time_since_last_press < 0.6:
             return
         self._last_time_pressed = rospy.Time.now()
+        
         if 'check' in event and event['check']: 
             self._data[self.hole_name()].append(self._positions)
             self._data[f"{self.hole_name()}_pose"].append(self._pose)
@@ -83,11 +94,28 @@ class JointStatesRecorderPanda(JointStatesRecorder):
 
 
 if __name__ == "__main__":
-    joint_state_topic_name = sys.argv[1]
-    folder_name = sys.argv[2]
-    config_file_panda_py = sys.argv[3]
-    config = yaml.load(open(config_file_panda_py, 'r'), Loader=yaml.FullLoader)
-    node = JointStatesRecorderPanda(joint_state_topic_name, folder_name, config)
+    argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
+    argument_parser.add_argument("--joint-state-topic-name", "-j", help="Topic where the joint state is published")
+    argument_parser.add_argument("--robot-name", "-r", help="name of the robot that you are calibrating, e.g. panda_4")
+    argument_parser.add_argument("--tool-position", "-t", help="postion of the tool on the table for the franka")
+    argument_parser.add_argument("--config-file", "-c", help="config file with the ip, admin and password of the robots")
+
+
+
+    args = argument_parser.parse_args()
+    joint_state_topic_name = args.joint_state_topic_name
+    robot_name = args.robot_name
+    config_file = args.config_file
+    tool_position = args.tool_position
+    package=os.path.join(rospkg.RosPack().get_path('calibration_tools'))
+    data_folder =  os.path.join(package, os.pardir, os.pardir, os.pardir, 'data', robot_name, tool_position) 
+    print(data_folder)
+    print("Joint_state", joint_state_topic_name)
+    print("Robot name:",robot_name)
+    config_path = os.path.join(package, 'config', config_file)
+    print("Config file:",config_path)
+    config = yaml.load(open(config_path, 'r'), Loader=yaml.FullLoader)
+    node = JointStatesRecorderPanda(joint_state_topic_name, data_folder, config)
     try:
         node.run()
     except rospy.ROSInterruptException:

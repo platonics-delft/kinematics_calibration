@@ -68,11 +68,11 @@ You need to create a config file for the
 ## Calibrate the urdf model
 The second step is the optimization. Make sure you have activated your virtual
 environment if you use one (`source bin/activate`, `poetry shell`). Go to the
-example folder and run  the optimization script.
+**scripts folder** and run  the optimization script.
 
 ```bash
-cd examples
-python3 run_optimizer.py --urdf-file <path/to/urdf> --calibrate-on <path/to/data/folder> 
+cd scripts
+python3 run_optimizer.py --urdf <path/to/urdf> --data <path/to/data/folder> 
 ```
 
 To get the full list of arguments, run the following command:

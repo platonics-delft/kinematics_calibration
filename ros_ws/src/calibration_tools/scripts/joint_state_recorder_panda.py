@@ -16,6 +16,7 @@ class JointStatesRecorderPanda(JointStatesRecorder):
         password = config['password']
         self.desk = panda_py.Desk(hostname, username, password)
         self.desk.listen(self._on_press_panda)
+        self.desk._listening = True
         self.vibration_pub = rospy.Publisher("/haptic_feedback", Float32, queue_size=0)
         self.pose_subsciber = rospy.Subscriber("/cartesian_pose", PoseStamped, self._pose_callback)
         self._last_time_pressed = rospy.Time.now()
@@ -65,9 +66,12 @@ class JointStatesRecorderPanda(JointStatesRecorder):
             self.log(f"Deleted data point for {self.hole_name()}")
             self.vibrate()
         elif 'cross' in event and event['cross']:
+            self.desk._listening = False
             self.log("Saving data to file and exiting")
             self.save_data()
             self.vibrate()
+            print('Wait for terminal to shut down.....')
+            rospy.signal_shutdown("Finished recording data")
             return
         elif 'circle' in event and event['circle']:
             self._active_hole = (self._active_hole + 1) % 2

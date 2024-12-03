@@ -22,7 +22,12 @@ class JointStatesRecorder():
         self._folder_name = folder_name
         if os.path.exists(folder_name):
             self.log(f"Folder {self._folder_name} already exists.")
-            self.read_data()
+            if len(os.listdir(folder_name)) != 0:
+                self.read_data()
+            else:
+                self._comments = []
+                self._data = {"hole_0": [], "hole_1": [], 'hole_0_pose': [], 'hole_1_pose': []}
+
         else:
             self.log(f"Creating folder {self._folder_name}")
             os.mkdir(self._folder_name)

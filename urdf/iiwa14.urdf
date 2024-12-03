@@ -9,7 +9,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/base_link.dae"/>
+        <mesh filename="../meshes/iiwa14/base_link.dae"/>
       </geometry>
     </visual>
   </link>
@@ -17,7 +17,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_1.dae"/>
+        <mesh filename="../meshes/iiwa14/link_1.dae"/>
       </geometry>
     </visual>
   </link>
@@ -25,7 +25,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_2.dae"/>
+        <mesh filename="../meshes/iiwa14/link_2.dae"/>
       </geometry>
     </visual>
   </link>
@@ -33,7 +33,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_3.dae"/>
+        <mesh filename="../meshes/iiwa14/link_3.dae"/>
       </geometry>
     </visual>
   </link>
@@ -41,7 +41,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_4.dae"/>
+        <mesh filename="../meshes/iiwa14/link_4.dae"/>
       </geometry>
     </visual>
   </link>
@@ -49,7 +49,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_5.dae"/>
+        <mesh filename="../meshes/iiwa14/link_5.dae"/>
       </geometry>
     </visual>
   </link>
@@ -57,7 +57,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_6.dae"/>
+        <mesh filename="../meshes/iiwa14/link_6.dae"/>
       </geometry>
     </visual>
   </link>
@@ -65,7 +65,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="./meshes/iiwa14/link_7.dae"/>
+        <mesh filename="../meshes/iiwa14/link_7.dae"/>
       </geometry>
     </visual>
   </link>

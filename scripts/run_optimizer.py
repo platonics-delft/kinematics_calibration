@@ -10,9 +10,9 @@ from calibrate_fk.parameter_optimizer import ParameterOptimizer
 def main():
 
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
-    argument_parser.add_argument("--urdf-file", "-u", help="Path to the URDF file")
-    argument_parser.add_argument("--calibrate-on", "-e", help="Specify the folder to evaluate the model on")
-    argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
+    argument_parser.add_argument("--urdf", "-u", help="Name of the urdf stored in the urdf folder")
+    argument_parser.add_argument("--robot-name", "-o", help="Robot name used when recording the data")
+    argument_parser.add_argument("--data", "-t", help="Robot name used when recording the data")
     argument_parser.add_argument("--variance", "-v", help="Variance of the noise", default=0.00)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
@@ -26,13 +26,14 @@ def main():
 
 
     args = argument_parser.parse_args()
-    urdf_file = args.urdf_file
-    data_folder = args.calibrate_on
+    urdf = args.urdf
+    robot_name = args.robot_name
+    data = args.data
+    
     variance = float(args.variance)
     end_effector = args.end_effector
     root_link = args.root_link
-    output_folder = args.output_folder
-    robot_name = args.robot
+
     overwrite = args.overwrite
     saving_steps = args.steps
     number_samples = args.number_samples
@@ -41,22 +42,29 @@ def main():
     if number_samples is not None:
         number_samples = int(number_samples)
 
+    script_directory = os.path.abspath(__file__)
 
+    # Get the parent directory of the script's directory
+    parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
+    
+    
+    output_path = os.path.abspath(os.path.join(parent_directory, 'calibrated_urdf', robot_name))
+    data_path = os.path.abspath(os.path.join(parent_directory, 'data', robot_name, data))
+    urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', urdf+ ".urdf"))
 
-    if output_folder == "output" or overwrite:
-        shutil.rmtree(output_folder, ignore_errors=True)
+    if  overwrite:
+        shutil.rmtree(output_path, ignore_errors=True)
 
-    if os.path.exists(output_folder):
-        print(f"Output folder {output_folder} already exists. Please delete it or specify a different folder.")
+    if os.path.exists(output_path):
+        print(f"Output folder {output_path} already exists. Please delete it or specify a different folder.")
         sys.exit(1)
-    os.makedirs(f"{output_folder}/images", exist_ok=True)
+    os.makedirs(f"{output_path}/images", exist_ok=True)
     config = {
-            'urdf_file': urdf_file,
-            'data_folder': data_folder,
+            'urdf': urdf,
+            'robot-name': robot_name,
             'variance': variance,
             'end_effector': end_effector,
             'root_link': root_link,
-            'output_folder': output_folder,
             'robot_name': robot_name,
             'overwrite': overwrite,
             'saving_steps': saving_steps,
@@ -64,15 +72,15 @@ def main():
             'offset_distance': offset_distance,
             'regularizer': regularizer,
             }
-    with open(f"{output_folder}/config.yaml", "w") as f:
+    with open(f"{output_path}/config.yaml", "w") as f:
         yaml.dump(config, f)
 
-
-    optimizer = ParameterOptimizer(output_folder)
+    print(output_path)
+    optimizer = ParameterOptimizer(output_path)
     optimizer.set_offset_distance(offset_distance)
     optimizer.set_regulizer_weight(regularizer)
-    optimizer.load_model(urdf_file)
-    optimizer.read_data(data_folder, number_samples=number_samples)
+    optimizer.load_model(urdf_path)
+    optimizer.read_data(data_path, number_samples=number_samples)
     optimizer.create_symbolic_fk(root_link, end_effector)
 
     parameters = {
@@ -84,7 +92,7 @@ def main():
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
     #optimizer.select_parameters(variance=variance, selected_parameters=panda_parameters)
-    optimizer.select_parameters(variance=variance, selected_parameters=parameters[robot_name])
+    optimizer.select_parameters(variance=variance, selected_parameters=parameters[urdf])
     optimizer.evaluate_fks(verbose=True)
     optimizer.optimize(saving_steps=saving_steps)
     optimizer.evaluate_fks(verbose=True)

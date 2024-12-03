@@ -2,12 +2,9 @@
 import sys
 import os
 import rospy
-import numpy as np
-import pynput
 import argparse
 import rospkg
-from sensor_msgs.msg import JointState
-from joint_state_recorder_panda import JointStatesRecorderPanda
+from joint_state_recorder import JointStatesRecorder
 
 if __name__ == "__main__":
     joint_state_topic_name = sys.argv[1]

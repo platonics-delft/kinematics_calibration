@@ -58,7 +58,7 @@ class JointStatesRecorderPanda(JointStatesRecorder):
 
             self.log(f"Addded data point for {self.hole_name()} with value {self._positions}")
             self.vibrate()
-            if len(self._data[self.hole_name()]) == 30:
+            if len(self._data[self.hole_name()]) >= 30:
                 self.vibrate(duration=0.1, times=3)
         elif 'down' in event and event['down']:
             self._data[self.hole_name()] = self._data[self.hole_name()][0:-1]

@@ -17,9 +17,9 @@ if __name__ == "__main__":
     joint_state_topic_name = args.joint_state_topic_name
     robot_name = args.robot_name
     tool_position = args.tool_position_on_table
-    dof = args.robot_dof
+    dof = int(args.robot_dof)
     package=os.path.join(rospkg.RosPack().get_path('calibration_tools'))
-    data_folder =  os.path.join(package, os.pardir, os.pardir, os.pardir, 'data', robot_name, tool_position) 
+    data_folder =  os.path.abspath(os.path.join(package, os.pardir, os.pardir, os.pardir, 'data', robot_name, tool_position))
     print(data_folder)
     print("Joint_state", joint_state_topic_name)
     print("Robot name:",robot_name)

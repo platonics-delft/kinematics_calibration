@@ -76,7 +76,7 @@ class JointStatesRecorder():
         self.log_joint_length(len(self._data['hole_0']))
         self.log(f"Saved joint for 1: {len(self._data['hole_1'])}")
         self.log_joint_length(len(self._data['hole_1']))
-        self.log(f"Active hole:")
+        self.log(f"Active hole is green:")
         self.print_circle_with_number(self.hole_name()[-1])
 
     def log_joint_length(self, length):
@@ -89,14 +89,22 @@ class JointStatesRecorder():
         # Log the message with the ASCII block and the value at the end
         self.log(f"{block} ({length})")
     def print_circle_with_number(self, number):
-        # ASCII art for a square
+        number = int(number)
+        if number == 0: 
+            color1=32
+            color2= 37
+        if number == 1:
+            color1=37
+            color2=32
         square = f"""
-        ███████████
-        █         █
-        █    {number}    █
-        █         █
-        ███████████
+            \033[{color1}m████████████   \033[{color2}m████████████
+            \033[{color1}m█          █   \033[{color2}m█          █
+            \033[{color1}m█     {0}    █   \033[{color2}m█     {1}    █
+            \033[{color1}m█          █   \033[{color2}m█          █
+            \033[{color1}m████████████   \033[{color2}m████████████ 
+            \033[{37}m
         """
+
         self.log(square)
     def save_data(self):
         for hole_name, data in self._data.items():

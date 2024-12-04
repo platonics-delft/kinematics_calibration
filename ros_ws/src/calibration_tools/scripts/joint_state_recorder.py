@@ -92,9 +92,9 @@ class JointStatesRecorder():
         number = int(number)
         if number == 0: 
             color1=32
-            color2= 37
+            color2= 0
         if number == 1:
-            color1=37
+            color1=0
             color2=32
         square = f"""
             \033[{color1}m████████████   \033[{color2}m████████████
@@ -102,7 +102,7 @@ class JointStatesRecorder():
             \033[{color1}m█     {0}    █   \033[{color2}m█     {1}    █
             \033[{color1}m█          █   \033[{color2}m█          █
             \033[{color1}m████████████   \033[{color2}m████████████ 
-            \033[{37}m
+            \033[0m
         """
 
         self.log(square)

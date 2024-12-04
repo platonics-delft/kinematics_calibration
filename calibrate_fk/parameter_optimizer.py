@@ -287,10 +287,7 @@ class ParameterOptimizer():
             # split only at the last underscore
             joint_name, param_name = symbol.name().rsplit("_", 1)
             self._best_params[joint_name][param_name] = value
-        # output_folder = os.path.dirname(self._urdf_file)
-        # output_file = os.path.join(output_folder, f"{self._output_folder}.urdf")
         self.urdf_name = os.path.basename(self._urdf_file)
-        # output_file = os.path.join(self._output_folder, 
         output_file = os.path.join(self._output_folder,self.urdf_name)
         self.modify_urdf_parameters(output_file, self._best_params)
         self._model = yourdfpy.URDF.load(output_file)

@@ -11,7 +11,6 @@ def main():
 
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--urdf", "-u", help="Name of the urdf stored in the urdf folder")
-    argument_parser.add_argument("--robot-name", "-o", help="Robot name used when recording the data")
     argument_parser.add_argument("--data", "-t", help="Robot name used when recording the data")
     argument_parser.add_argument("--variance", "-v", help="Variance of the noise", default=0.00)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
@@ -27,8 +26,8 @@ def main():
 
     args = argument_parser.parse_args()
     urdf = args.urdf
-    robot_name = args.robot_name
     data = args.data
+    robot_name = os.path.dirname(data)
     
     variance = float(args.variance)
     end_effector = args.end_effector
@@ -49,7 +48,7 @@ def main():
     
     
     output_path = os.path.abspath(os.path.join(parent_directory, 'calibrated_urdf', robot_name))
-    data_path = os.path.abspath(os.path.join(parent_directory, 'data', robot_name, data))
+    data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', urdf+ ".urdf"))
 
     if  overwrite:

@@ -40,11 +40,8 @@ class JointStatesRecorderPanda(JointStatesRecorder):
                 pose.pose.orientation.z, 
         ])
 
-    def vibrate(self, duration=0.2, times=1):
-        # self.log(f"Vibrating for {duration} seconds {times} times.")
-        for _ in range(times):
-            self.vibration_pub.publish(Float32(data=duration))
-            time.sleep(duration*2)
+    def vibrate(self, duration=0.2):
+        self.vibration_pub.publish(Float32(data=duration))
 
     def _on_press_panda(self, event: dict) -> None:
         time_since_last_press = (rospy.Time.now() - self._last_time_pressed).to_sec()
@@ -58,9 +55,11 @@ class JointStatesRecorderPanda(JointStatesRecorder):
 
 
             self.log(f"Addded data point for {self.hole_name()} with value {self._positions}")
-            self.vibrate()
             if len(self._data[self.hole_name()]) >= 30:
-                self.vibrate(duration=0.1, times=3)
+                self.vibrate(duration=0.5)
+                print('test')
+            else:
+                self.vibrate()
         elif 'down' in event and event['down']:
             self._data[self.hole_name()] = self._data[self.hole_name()][0:-1]
             self.log(f"Deleted data point for {self.hole_name()}")
@@ -76,7 +75,7 @@ class JointStatesRecorderPanda(JointStatesRecorder):
         elif 'circle' in event and event['circle']:
             self._active_hole = (self._active_hole + 1) % 2
             self.log(f"Switched to hole {self._active_hole}")
-            self.vibrate(duration=0.1, times=2)
+            self.vibrate(duration=1)
         else:
             self.log("Unknown key pressed")
         self.print_status()

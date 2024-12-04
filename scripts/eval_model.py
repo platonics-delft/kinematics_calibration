@@ -16,39 +16,34 @@ from calibrate_fk.utils import (compute_statistics, overlay_images,
                                 replace_mesh_with_cylinder)
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("--urdf-file", "-u", help="Path to the URDF file")
-argument_parser.add_argument("--without-mesh", "-m", help="Use meshes(default) or replace with cylinders", action="store_true") # Add a flag to enable/disable the cylinder replacement
-argument_parser.add_argument("--evalauate-on", "-e", help="Specify the folder to evaluate the model on")
-#argument_parser.add_argument("--show", "-s", help="Show the URDF file", action="store_true")
+argument_parser.add_argument("--model", "-m", help="Model name")
+argument_parser.add_argument("--data", "-d", help="Specify the folder to evaluate the model on")
 argument_parser.add_argument("--overlay", help="Overlay the images", action="store_true")
-argument_parser.add_argument("--output-folder", "-o", help="Output folder for the results", default="output")
+argument_parser.add_argument("--without-mesh", "-wm", help="Use meshes(default) or replace with cylinders", action="store_true") # Add a flag to enable/disable the cylinder replacement
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
-argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
-argument_parser.add_argument("--offset-distance", "-d", help="Offset distance for the hole", default=0.05, type=float)
+argument_parser.add_argument("--offset-distance", "-od", help="Offset distance for the hole", default=0.05, type=float)
 
 
 args = argument_parser.parse_args()
 
-urdf_file = args.urdf_file
+model = args.model
 with_mesh = not args.without_mesh
-eval_folder = args.evalauate_on
+eval_name = args.data
 show_urdf = True
 overlay = args.overlay
-output_folder = "evaluations/" + args.output_folder
+script_directory = os.path.abspath(__file__)
+parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
+output_folder = parent_directory + "/calibrated_urdf/" + model
 camera_setting_file = args.camera_settings
 offset_distance = float(args.offset_distance)
-overwrite = args.overwrite
+overwrite = True
 
-assert os.path.exists(urdf_file), f"URDF file {urdf_file} not found."
+model_config = yaml.load(open(output_folder+ "/config.yaml", 'r'), Loader=yaml.FullLoader)
+urdf_name = model_config["urdf"]
 
-# Delete the the output folder if using the default name
-if output_folder == "output" or overwrite:
-    shutil.rmtree(output_folder, ignore_errors=True)
+urdf_file = output_folder + "/" + urdf_name + ".urdf"
+eval_folder = os.path.abspath(os.path.join(parent_directory, 'data', eval_name))
 
-if os.path.exists(output_folder):
-
-    print(f"Output folder {output_folder} already exists. Please delete it or specify a different folder.")
-    sys.exit(1)
 
 os.makedirs(f"{output_folder}/images", exist_ok=True)
 

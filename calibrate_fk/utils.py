@@ -258,7 +258,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     ax.plot(steps, distances_train, label="train", color='blue')
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
-        #ax[0].plot(steps, distances, label=f"{name.replace('_', '-')}", alpha=0.5)
+        #ax.plot(steps, distances, label=f"{name.replace('_', '-')}", alpha=0.5)
         if i == 0:
             ax.plot(steps, distances, label="validation", color='orange', alpha=0.5)
         else:
@@ -267,7 +267,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     # set legend
     #ax.legend()
     ax.set_xlabel("Step")
-    ax.set_ylabel("Distance error [m]")
+    ax.set_ylabel("$\epsilon$ [m]")
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     # only show the step at every 5th
     ax.xaxis.set_major_locator(plt.MultipleLocator(5))
@@ -280,9 +280,9 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     fig.set_size_inches(3.487/2, 1.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.31)
+    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
 
-    plt.savefig(f"{model_folder}/distortion.png")
+    #plt.savefig(f"{model_folder}/distortion.png")
     plt.savefig(f"{model_folder}/distortion.pgf")
 
     fig, ax = plt.subplots(1, 1)
@@ -292,7 +292,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     ax.plot(steps, variances_train, label="train", color='blue')
     for i, variances in enumerate(variances_test):
         name = data_folders_test[i].split("/")[-1]
-        #ax[1].plot(steps, variances, label=f"{name.replace('_', '-')}", alpha=0.5)
+        #ax.plot(steps, variances, label=f"{name.replace('_', '-')}", alpha=0.5)
         if i == 0:
             ax.plot(steps, variances, label="validation", color='orange', alpha=0.5)
         else:
@@ -301,7 +301,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     ax.legend()
     # can you put the x-axis label at the right end below the figure?
     ax.set_xlabel("Step")
-    ax.set_ylabel("SD [m]")
+    ax.set_ylabel("$\sigma$ [m]")
 
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     # only show the step at every 5th
@@ -314,9 +314,9 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     ax.spines['right'].set_visible(False)
 
 
-    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.31)
+    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
 
-    plt.savefig(f"{model_folder}/consistency.png")
+    #plt.savefig(f"{model_folder}/consistency.png")
     plt.savefig(f"{model_folder}/consistency.pgf")
     """
 

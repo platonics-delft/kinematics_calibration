@@ -1,0 +1,12 @@
+data_path: /home/platonics/Documents/calibration_ws/src/kinematics_calibration/data/panda_7/front
+end_effector: ball_link
+number_samples: null
+offset_distance: 0.05
+overwrite: true
+regularizer: 0.0001
+robot-name: panda_7
+robot_name: panda_7
+root_link: base_link
+saving_steps: false
+urdf: panda
+variance: 0.0

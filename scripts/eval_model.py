@@ -16,8 +16,8 @@ from calibrate_fk.utils import (compute_statistics, overlay_images,
                                 replace_mesh_with_cylinder)
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("--model", "-m", help="Model name")
-argument_parser.add_argument("--data", "-d", help="Specify the folder to evaluate the model on")
+argument_parser.add_argument("--model", "-m", help="calibrated robot model. Saved in the calibrated_urdf folder. ")
+argument_parser.add_argument("--data", "-d", help="Specify the folder to evaluate the model on. The data should be stored in the data folder.")
 argument_parser.add_argument("--overlay", help="Overlay the images", action="store_true")
 argument_parser.add_argument("--without-mesh", "-wm", help="Use meshes(default) or replace with cylinders", action="store_true") # Add a flag to enable/disable the cylinder replacement
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
@@ -29,7 +29,7 @@ args = argument_parser.parse_args()
 model = args.model
 with_mesh = not args.without_mesh
 eval_name = args.data
-show_urdf = True
+# show_urdf = True
 overlay = args.overlay
 script_directory = os.path.abspath(__file__)
 parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
@@ -44,6 +44,8 @@ urdf_name = model_config["urdf"]
 urdf_file = output_folder + "/" + urdf_name + ".urdf"
 eval_folder = os.path.abspath(os.path.join(parent_directory, 'data', eval_name))
 
+## extract the last part of the path 
+data_folder_name = eval_name.split('/')[-1]
 
 os.makedirs(f"{output_folder}/images", exist_ok=True)
 
@@ -91,7 +93,7 @@ if eval_folder:
         # convert all numpy floats to python floats
         kpis = {k: float(v) if isinstance(v, np.float64) else v for k, v in kpis.items()}
         yaml.dump(kpis, f)
-    if show_urdf:
+    if overlay:
         robot.update_cfg(q_show)
         print("Move the view such that you can nicely see the end-effector. Press q in the visualization window to save the camera settings.")
         robot.show()
@@ -104,12 +106,9 @@ if eval_folder:
         with open(camera_setting_file, 'w') as f:
             json.dump(saved_camera, f)
 
-
-
-    if overlay:
         for j, q_data in enumerate([q_hole_0, q_hole_1]):
             for i, q in enumerate(q_data):
-                print(f"Creating image for hole {j}/2 and config {i}/{len(q_data)}")
+                print(f"Creating image for hole {j+1} of 2 and config {i+1}/{len(q_data)}")
                 robot.update_cfg(q)
                 img_bin = robot.scene.save_image((800, 800))
                 img = Image.open(BytesIO(img_bin))
@@ -120,14 +119,14 @@ if eval_folder:
                 images.append(img_array)
                 with open(f'{output_folder}/images/hole_{j}_config_{i}.png', 'wb') as f:
                     f.write(img_bin)
-        overlay_images(images, f"{output_folder}/overlay.png")
+        overlay_images(images, f"{output_folder}/overlay_"+ data_folder_name + ".png")
 
 
 
 
 
 
-if show_urdf and not eval_folder:
+if overlay and not eval_folder:
     robot.update_cfg(q_show)
     robot.show()
     saved_camera = {

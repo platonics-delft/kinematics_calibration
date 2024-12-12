@@ -114,14 +114,14 @@ class ParameterOptimizer():
         )
         self._q = ca.SX.sym("q", self._symbolic_fk.n())
 
-    def select_parameters(self, variance: float = 0.0, selected_parameters: Optional[List[str]] = None) -> None:
+    def select_parameters(self, variance_noise: float = 0.0, selected_parameters: Optional[List[str]] = None) -> None:
         if selected_parameters is None:
             selected_parameters = []
             for joint in self._symbolic_fk.robot.active_joints():
                 joint_is_active = input(f"Should the joint {joint} be optimized? (y/n): ")
                 if joint_is_active.lower() == "y":
                     selected_parameters.append(joint)
-        self.create_parameters(selected_parameters, variance=variance)
+        self.create_parameters(selected_parameters, variance_noise=variance_noise)
 
     @property
     def active_joints(self) -> Set[str]:
@@ -140,7 +140,7 @@ class ParameterOptimizer():
 
         return links
 
-    def create_parameters(self, selected_joints: List[str], variance: float = 0.0) -> None:
+    def create_parameters(self, selected_joints: List[str], variance_noise: float = 0.0) -> None:
         self._params = {}
         self._best_params = {}
         self._initial_params = {}
@@ -165,12 +165,12 @@ class ParameterOptimizer():
                 "yaw": values[5],
             }
             self._initial_params[joint] = {
-                "x": values[0] + np.random.normal(0, variance),
-                "y": values[1] + np.random.normal(0, variance),
-                "z": values[2] + np.random.normal(0, variance),
-                "roll": values[3] + np.random.normal(0, variance),
-                "pitch": values[4] + np.random.normal(0, variance),
-                "yaw": values[5] + np.random.normal(0, variance),
+                "x": values[0] + np.random.normal(0, variance_noise),
+                "y": values[1] + np.random.normal(0, variance_noise),
+                "z": values[2] + np.random.normal(0, variance_noise),
+                "roll": values[3] + np.random.normal(0, variance_noise),
+                "pitch": values[4] + np.random.normal(0, variance_noise),
+                "yaw": values[5] + np.random.normal(0, variance_noise),
             }
 
             self._residuals[joint] = {
@@ -243,7 +243,7 @@ class ParameterOptimizer():
         fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
         distance_error = (ca.norm_2(fk_mean_1[0:2] - fk_mean_2[0:2]) - self._offset_distance)**2
-        height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 
+        # height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 
 
 
         objective = fk_variance_norm_1 + fk_variance_norm_2 + distance_error# + height_error

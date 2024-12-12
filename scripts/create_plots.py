@@ -1,16 +1,17 @@
 import argparse
 import os
 import yaml
-from calibrate_fk.utils import plot_distance_curves
+from calibrate_fk.utils import plot_training_curves
 
 
 def main():
     parser = argparse.ArgumentParser(description='Create plots for the calibration data')
-    parser.add_argument('--model', "-m", type=str, help='Name of the model')
+    parser.add_argument('--model', "-m", type=str, help='Calibrated robot model. Saved in the calibrated_urdf folder.')
+    parser.add_argument('--latex', "-l", action='store_true', help='Use latex for saving of the plots as .pgf. If not they are saved as png.')
     args = parser.parse_args()
 
     model = args.model
-
+    latex = args.latex
     script_directory = os.path.abspath(__file__)
     parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
     model_folder = parent_directory + "/calibrated_urdf/" + model
@@ -27,7 +28,7 @@ def main():
     print(f"Training data: {training_data}")
     print(f"Evaluation data: {evaluation_data}")
 
-    plot_distance_curves(model_folder, training_data, evaluation_data, offset_distance)
+    plot_training_curves(model_folder, training_data, evaluation_data, offset_distance, latex)
 
 if __name__ == "__main__":
     main()

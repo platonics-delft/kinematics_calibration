@@ -10,12 +10,7 @@ from PIL import Image
 from yourdfpy import URDF
 
 
-plt.rcParams.update({
-    "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
-    "text.usetex": True,          # Use LaTeX for text rendering
-    "font.family": "serif",       # Use a serif font
-    "pgf.rcfonts": False,         # Disable using Matplotlib's default font settings
-})
+
 
 OFFSET_DISTANCE = 0.05
 
@@ -81,6 +76,8 @@ def overlay_images(images: list , output_path: str):
     result_image = Image.fromarray(average_image, mode="RGBA")
 
     result_image.save(output_path)
+    # show the image
+    result_image.show()
 
 def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, offset_distance: float=0.05) -> dict:
 
@@ -202,17 +199,24 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
         "mean_2": fk_mean_2,
         "std_dev_2": np.sqrt(fk_variance_2),
         "distance_error": float(distance_error),
-        "height_error": average_z,
+        # "height_error": average_z,
         "fks_1": fks_1,
         "fks_2": fks_2,
-        "std_dev_fk": std_dev_fk,
+        # "std_dev_fk": std_dev_fk,
     }
     return statistics
 
 
 
-def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance) -> None:
+def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, latex=False) -> None:
 
+    if latex == True:
+        plt.rcParams.update({
+        "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
+        "text.usetex": False,          # Use LaTeX for text rendering
+        "font.family": "serif",       # Use a serif font
+        "pgf.rcfonts": False,         # Disable using Matplotlib's default font settings
+        })
     kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
     nb_steps = kpis["nb_steps"]
     train_name = data_folder_train.split("/")[-1]
@@ -222,8 +226,8 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     distances_test = [[] for _ in data_folders_test]
     variances_train = []
     variances_test = [[] for _ in data_folders_test]
-    average_z_train = []
-    average_z_test = [[] for _ in data_folders_test]
+    # average_z_train = []
+    # average_z_test = [[] for _ in data_folders_test]
     print(f"Offset distance: {offset_distance}")
 
     std_devs_z = []
@@ -234,8 +238,8 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
         statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
         distance_error = statistics["distance_error"]
         std_dev = statistics["std_dev_fk"]
-        average_z = statistics["height_error"]
-        average_z_train.append(average_z)
+        # average_z = statistics["height_error"]
+        # average_z_train.append(average_z)s
         distances_train.append(distance_error)
         variances_train.append(std_dev)
         average_z_all = []
@@ -243,10 +247,10 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
             statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
             distance_error = statistics["distance_error"]
             std_dev = statistics["std_dev_fk"]
-            average_z = statistics["height_error"]
+            # average_z = statistics["height_error"]
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
-            average_z_all.append(average_z)
+            # average_z_all.append(average_z)
         std_dev_z = np.std(np.array(average_z_all))
         std_devs_z.append(std_dev_z)
 
@@ -265,7 +269,7 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
             ax.plot(steps, distances, color='orange', alpha=0.5)
 
     # set legend
-    #ax.legend()
+    ax.legend()
     ax.set_xlabel("Step")
     ax.set_ylabel("$\epsilon$ [m]")
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
@@ -277,13 +281,15 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
 
     # the figure should have tight margins but the legend should not be cut off
     # make size of figure suitable for journal paper IEEE standard
-    fig.set_size_inches(3.487/2, 1.5)
+    # fig.set_size_inches(3.487/2, 1.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
+    # plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
 
-    #plt.savefig(f"{model_folder}/distortion.png")
-    plt.savefig(f"{model_folder}/distortion.pgf")
+    if latex:
+        plt.savefig(f"{model_folder}/distortion.pgf")
+    else:
+        plt.savefig(f"{model_folder}/distortion.png")
 
     fig, ax = plt.subplots(1, 1)
 
@@ -309,25 +315,27 @@ def plot_distance_curves(model_folder: str, data_folder_train: str, data_folders
     ax.set_ylim(1e-4, 3e-2)
 
     # make size of figure suitable for journal paper IEEE standard
-    fig.set_size_inches(3.487/2, 1.5)
+    # fig.set_size_inches(3.487/2, 1.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
 
-    plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
-
-    #plt.savefig(f"{model_folder}/consistency.png")
-    plt.savefig(f"{model_folder}/consistency.pgf")
+    # plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
+    if latex:
+        plt.savefig(f"{model_folder}/consistency.pgf")
+    else:
+        plt.savefig(f"{model_folder}/consistency.png")
     """
 
     ax[2].set_yscale("log")
     ax[2].plot(steps, std_devs_z, color='blue')
-    #ax[2].legend()
+    
     #ax[2].set_xlabel("Step")
     ax[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax[2].set_ylim(1e-4, 1e-1)
     ax[2].set_title("Height consistency")
     """
+    plt.show()
 
 
     # Can you export each axes to a separate file?

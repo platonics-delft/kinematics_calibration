@@ -1,4 +1,4 @@
-# Calibration of robot kinematics
+# MUKCa: Minimal User-friendly Kinematics Calibration of Robot Manipulators
 
 Have you ever wondered why the accuracy of your robot is poor, and why the
 end-effector is at different poses when you move in the null-space? Well, 
@@ -8,52 +8,52 @@ relevant when working with cartesian control where an accurate forward kinematic
 The method implemented in this repository was mainly developed for the Franka
 Emika Panda robot, where inaccurate kinematics have been raised a few times.
 
-The technique and code used here can also be used to determine mount positions
-of robots on different tables or other robots.
-
-## The calibration tool
-
 <!-- TODO: Add picture and description of the calibration tool -->
 
 ## Installation
-
+This is a python package named calibrated_fk. 
 Install the package through pip, using 
 ```bash
-pip3 install .
+pip3 install -e .
 ```
 
-Install the package through poetry, using
+Or install the package through poetry, using
 ```bash
 poetry install
 ```
-
-Install the ros workspace to record data. It is only running one script to 
-echo joint states and writing a csv file. There is hardly any dependencies
-on this.
+## Record the data
+To record the data, we rely on the ros topic that has the joint angles of the encoders. Place this repository in a catkin workspace and build it. 
 
 ```bash
 cd ros_ws
 catkin build
 source devel/setup.{bash,zsh}
 ```
-
-## Record the data
-
-The calibration is done in two steps. First, the robot is moved to a few
-poses, and the joint states are recorded. This is done by running the
-`record_joint_states_dataset` script.
+This will install the ros workspace to record data. It is only running one script to 
+save joint states and writing a csv file. There is hardly any dependencies on this.
+The calibration routine is very simple. The tool has two sockets identified as 0 and 1. There is a sphere attached at the end effecotor. The idea is to record main joint configuration of the ball in the socket 0 and many other in the socket 1. At least 20 for each socket. To do this we run the node in calibration_tools named record_joint_states_dataset. 
 
 Here is an example for calibrating the kuka for example: 
 
 ```bash
 rosrun calibration_tools record_joint_states_dataset --joint-state-topic-name /joint_states --robot-name kuka_1  --tool-position-on-table front --robot-dof 7 
 ```
-- Press 'a' to add a new joint configuration that has the sphere in the hole tha the algorithm 
+For the robot name we advice to use the name of the robot and a number considering that you want to calibrate more than one robot with the same name. The position of the tool is to distinguish the different datasets if more one for different calibration tool are recorded.  
+
+What to do when the code runs: 
+
+- Press 'a' to add a new joint configuration that has the sphere in the socket that the displayed in the algorithm.  
 - Presss 'd' to delete the last joint configuration from the list
 - Press 's' when you switch the hole in which you are recording
-- Press 'q' when you have finished recording
+- Press 'q' when you have finished recording. 
+
 
 ### Record data with a Franka 
+
+As controllers, we suggest to use the [Human Friendly Controllers](https://github.com/franzesegiovanni/franka_human_friendly_controllers.git). You can also lunch any controller of [franka_ros](https://github.com/frankaemika/franka_ros.git). It is important to check that the joint state can be echoed. 
+
+When using a Franka, we give the possibility of using the buttons on the end effector to add data or switch between holes. 
+Run the record_joint_states_panda node, e.g., 
 ```bash
 rosrun calibration_tools record_joint_states_panda --joint-state-topic-name /joint_states --robot-name panda_1 --config-file panda_1.yaml --tool-position-on-table front 
 ```
@@ -62,46 +62,59 @@ rosrun calibration_tools record_joint_states_panda --joint-state-topic-name /joi
 - Press 'down' to delete the last data point
 - Press 'o' to switch between holes
 - Press 'x' to save the data and quit.
-You need to create a config file for the 
-/src/calibration_tools/config/
+
+You need to create a config file for the panda in 
+'ros_ws/src/calibration_tools/config/<robot-name>' where you are specifying: hostname, username, password,that are the IP for the panda, the username and password used to access the Desk interface. 
 
 ## Calibrate the urdf model
-The second step is the optimization. Make sure you have activated your virtual
-environment if you use one (`source bin/activate`, `poetry shell`). Go to the
+We are ready to optimize our model. 
+
+<!-- Make sure you have activated your virtual
+environment if you use one (`source bin/activate`, `poetry shell`).  -->
+
+Go to the
 **scripts folder** and run  the optimization script.
 
 ```bash
 cd scripts
-python3 run_optimizer.py --urdf <path/to/urdf> --data <path/to/data/folder> 
+```
+Then you can run all the scripts as: 
+```bash
+python3 run_optimizer.py --model <nomial_urdf_name> --data <path/to/data/folder> 
 ```
 
-To get the full list of arguments, run the following command:
+The nomial model needs to be in the **urdf** folder. For example panda.urdf. The data are the one saved in the previous step. For example panda_1/front. 
+This script runs the optimazation and prints the result. It outputs a new `urdf` model with the same name of the original one, e.g. panda.urdf but located in the **calibrated_urdf** folder and subfolder of the id that we gave to that robot, e.g. panda_1. So now if you browse to calibrated_urdf/panda_1 you will find your panda.urdf that contains calibrated parameters. 
+```bash
+python3 run_optimizer.py --model panda --data panda_1/front
+``` 
+
+## Plot the learning curves
+To diplay how good the model gets, we diplay the learning and the validation curves by running 
 
 ```bash
-python3 run_optimizer.py --help
+python3 create_plots.py --model panda_1
 ```
+This will display the consistency and the distortion of the model both on the training set but also in any other of the dataset that is in the folder data/panda_1. 
 
+## Evaluate a calibrated model on a particular dataset
 
-This script runs the optimazation and prints the result. It outputs a new `urdf`
-in the asset folder with the optimized parameters. KPI's are stored in the
-output folder (default is `output`).
-
-## Evaluate a calibration
-
-You can evaluate the calibration by runnig.
+You can evaluate the calibrated model on any dataset that you recorded for that robot
 
 ```bash
-cd examples
-python3 eval_model.py --urdf-file <path/to/urdf> --evaluate-on <path/to/data/folder> 
+python3 eval_model.py --model <calibrated_model> --data <path/to/data/folder> 
 ```
-
-This scripts produces the kpis.
-By passing the `-s` flag, you can show the robot.
-By passing the `--overlay` flag an overlay of all the configuration is saved to
-the output folder.
-
-To get all the potential arguments, run the following command:
+For example, 
 
 ```bash
-python3 eval_model.py --help
+python3 eval_model.py  --model panda_1 --data panda_1/front
 ```
+
+By passing the `--overlay` flag an overlay of all the configuration is saved to the calibrated_urdf/panda_1.
+
+If the optimization was successful the overlay will look like this: 
+
+
+![Alt Text](overlay.PNG)
+
+You can notice that the forward kinematics is very consistent by the diplayed red dot of the learned shpere attached at the end effector. 

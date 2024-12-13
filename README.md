@@ -24,6 +24,7 @@ poetry install
 ```
 ## Record the data
 ![Alt Text](imgs/mucka.gif)
+
 To record the data, we rely on the ros topic that has the joint angles of the encoders. Place this repository in a catkin workspace and build it. 
 
 ```bash

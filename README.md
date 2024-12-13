@@ -102,7 +102,9 @@ To diplay how good the model gets, we diplay the learning and the validation cur
 python3 create_plots.py --model panda_1
 ```
 This will display the consistency and the distortion of the model both on the training set but also in any other of the dataset that is in the folder data/panda_1. 
-
+For example:
+![Alt Text](imgs/calibration_curve.png)
+The right left figure shows the distortion of the robot, i.e. the error in the distance between the two set of points for socket 0 ad socket 1. We exected the distance to be at 0.05 m, so we can compute the error of our measurement. The second curve is the consistency, i.e. the variance of the different forward kinematics positions for each of the two holes. THe optimization is trying to make the robot consistent and less distorted as possible, that is why you see the curve to go down.
 ## Evaluate a calibrated model on a particular dataset
 
 You can evaluate the calibrated model on any dataset that you recorded for that robot
@@ -115,6 +117,15 @@ For example,
 ```bash
 python3 eval_model.py  --model panda_1 --data panda_1/front
 ```
+
+You will get some numbers as outputs:
+- 'distance_error': 2.01384625872561e-05,
+- 'height_error': 0.00013234018119939392,
+- 'mean_1': array([ 0.47548193, -0.20020225,  0.01592467]),
+- 'mean_2': array([ 0.4757642 , -0.15022336,  0.01579233]),
+- 'std_dev_1': 0.00027288376639481986,
+- 'std_dev_2': 0.00028558583889686857,
+- 'std_dev_fk': 0.00039499977384835393
 
 By passing the `--overlay` flag an overlay of all the configuration is saved to the calibrated_urdf/panda_1.
 

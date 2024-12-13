@@ -54,6 +54,7 @@ What to do when the code runs:
 
 
 ### Record data with a Franka 
+![Alt Text](imgs/mukca_franka.gif)
 
 As controllers, we suggest to use the [Human Friendly Controllers](https://github.com/franzesegiovanni/franka_human_friendly_controllers.git). You can also lunch any controller of [franka_ros](https://github.com/frankaemika/franka_ros.git). It is important to check that the joint state can be echoed. 
 

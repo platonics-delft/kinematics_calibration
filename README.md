@@ -6,9 +6,10 @@ the platonics did! And we are you to help you out. This problem is especally
 relevant when working with cartesian control where an accurate forward kinematics is desirable. 
 
 The method implemented in this repository was mainly developed for the Franka
-Emika Panda robot, where inaccurate kinematics have been raised a few times.
-
-<!-- TODO: Add picture and description of the calibration tool -->
+Emika Panda robot, where inaccurate kinematics have been raised a few times but was tested on many other commercial robots. This is the first tool that does not require any external systems like optitrack, camera sensors or laser trackers. You will only need one simple tool to place in front of the robot. 
+The tool is 3D printable and it is composed of two spherical sockets placed at a distance of 50 mm. A 3D printable spherical joint is then attached to the end effector and used to record many position of the robt in each of the sockets, identified as 0 and 1. 
+![alt text](imgs/mukca_tool.png)
+The first step is the data recording and then the optimization is performed to optimize the robot urdf file. 
 
 ## Installation
 This is a python package named calibrated_fk. 
@@ -22,6 +23,7 @@ Or install the package through poetry, using
 poetry install
 ```
 ## Record the data
+![Alt Text](imgs/mucka.gif)
 To record the data, we rely on the ros topic that has the joint angles of the encoders. Place this repository in a catkin workspace and build it. 
 
 ```bash
@@ -32,6 +34,8 @@ source devel/setup.{bash,zsh}
 This will install the ros workspace to record data. It is only running one script to 
 save joint states and writing a csv file. There is hardly any dependencies on this.
 The calibration routine is very simple. The tool has two sockets identified as 0 and 1. There is a sphere attached at the end effecotor. The idea is to record main joint configuration of the ball in the socket 0 and many other in the socket 1. At least 20 for each socket. To do this we run the node in calibration_tools named record_joint_states_dataset. 
+
+
 
 Here is an example for calibrating the kuka for example: 
 
@@ -115,6 +119,6 @@ By passing the `--overlay` flag an overlay of all the configuration is saved to 
 If the optimization was successful the overlay will look like this: 
 
 
-![Alt Text](overlay.PNG)
+![Alt Text](imgs/overlay.PNG)
 
 You can notice that the forward kinematics is very consistent by the diplayed red dot of the learned shpere attached at the end effector. 

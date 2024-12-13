@@ -192,17 +192,17 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
     average_z_2 = np.mean(fks_2[:, 2])
     distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
     std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2)
-    average_z = np.mean([average_z_1, average_z_2])
+    average_z = np.linalg.norm(average_z_1 - average_z_2)
     statistics = {
         "mean_1": fk_mean_1,
         "std_dev_1": np.sqrt(fk_variance_1),
         "mean_2": fk_mean_2,
         "std_dev_2": np.sqrt(fk_variance_2),
         "distance_error": float(distance_error),
-        # "height_error": average_z,
+        "height_error": average_z,
         "fks_1": fks_1,
         "fks_2": fks_2,
-        # "std_dev_fk": std_dev_fk,
+        "std_dev_fk": std_dev_fk,
     }
     return statistics
 
@@ -226,8 +226,8 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     distances_test = [[] for _ in data_folders_test]
     variances_train = []
     variances_test = [[] for _ in data_folders_test]
-    # average_z_train = []
-    # average_z_test = [[] for _ in data_folders_test]
+    average_z_train = []
+    average_z_test = [[] for _ in data_folders_test]
     print(f"Offset distance: {offset_distance}")
 
     std_devs_z = []
@@ -238,8 +238,8 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
         statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
         distance_error = statistics["distance_error"]
         std_dev = statistics["std_dev_fk"]
-        # average_z = statistics["height_error"]
-        # average_z_train.append(average_z)s
+        average_z = statistics["height_error"]
+        average_z_train.append(average_z)
         distances_train.append(distance_error)
         variances_train.append(std_dev)
         average_z_all = []
@@ -247,10 +247,10 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
             statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
             distance_error = statistics["distance_error"]
             std_dev = statistics["std_dev_fk"]
-            # average_z = statistics["height_error"]
+            average_z = statistics["height_error"]
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
-            # average_z_all.append(average_z)
+            average_z_all.append(average_z)
         std_dev_z = np.std(np.array(average_z_all))
         std_devs_z.append(std_dev_z)
 

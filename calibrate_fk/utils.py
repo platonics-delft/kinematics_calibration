@@ -87,11 +87,15 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, o
     fks_1 = np.zeros((len(data_hole_0), 3))
     fks_2 = np.zeros((len(data_hole_1), 3))
     for i, joint_angles in enumerate(data_hole_0):
-        robot_model.update_cfg(joint_angles)
+        joints= np.zeros(robot_model.num_actuated_joints)   
+        joints[:len(joint_angles)] = joint_angles
+        robot_model.update_cfg(joints)
         fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
         fks_1[i] = np.array(fk[:3, 3]).flatten()
     for i, joint_angles in enumerate(data_hole_1):
-        robot_model.update_cfg(joint_angles)
+        joints= np.zeros(robot_model.num_actuated_joints)
+        joints[:len(joint_angles)] = joint_angles
+        robot_model.update_cfg(joints)
         fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
         fks_2[i] = np.array(fk[:3, 3]).flatten()
 
@@ -175,11 +179,15 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
     fks_1 = np.zeros((len(data_hole_0), 3))
     fks_2 = np.zeros((len(data_hole_1), 3))
     for i, joint_angles in enumerate(data_hole_0):
-        model.update_cfg(joint_angles)
+        joint= np.zeros(model.num_actuated_joints)
+        joint[:len(joint_angles)] = joint_angles
+        model.update_cfg(joint)
         fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
         fks_1[i] = np.array(fk[:3, 3]).flatten()
     for i, joint_angles in enumerate(data_hole_1):
-        model.update_cfg(joint_angles)
+        joint= np.zeros(model.num_actuated_joints)
+        joint[:len(joint_angles)] = joint_angles
+        model.update_cfg(joint)
         fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
         fks_2[i] = np.array(fk[:3, 3]).flatten()
 
@@ -341,6 +349,28 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     # Can you export each axes to a separate file?
 
 
+import re
 
+def modify_urdf(urdf_file: str, search_pattern: str, replace_with: str, output_file: str):
+    """
+    Load the URDF file, search for a specific line/element, replace it, and save the new URDF.
 
+    Args:
+        urdf_file (str): Path to the input URDF file.
+        search_pattern (str): The line or pattern to search for.
+        replace_with (str): The text to replace the found line with.
+        output_file (str): Path to the new URDF file where the modified content will be saved.
+    """
+    
+    # Read the original URDF file
+    with open(urdf_file, 'r') as file:
+        urdf_content = file.read()
 
+    # Search and replace the content
+    urdf_content_modified = re.sub(search_pattern, replace_with, urdf_content)
+
+    # Write the modified content to a new URDF file
+    with open(output_file, 'w') as file:
+        file.write(urdf_content_modified)
+
+    print(f"Modified URDF saved to: {output_file}")

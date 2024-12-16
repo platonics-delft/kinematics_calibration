@@ -94,7 +94,6 @@ def main():
             'vx300': ["waist", "shoulder", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
-    #optimizer.select_parameters(variance=variance, selected_parameters=panda_parameters)
     optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model])
     optimizer.evaluate_fks(verbose=True)
     optimizer.optimize(saving_steps=saving_steps)

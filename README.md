@@ -135,3 +135,12 @@ If the optimization was successful the overlay will look like this:
 ![Alt Text](imgs/overlay.PNG)
 
 You can notice that the forward kinematics is very consistent by the diplayed red dot of the learned shpere attached at the end effector. 
+
+### Use the panda urdf for a calibrated Cartesina impedance controller. 
+
+You can use the [Franka human friendly controllers](https://github.com/franzesegiovanni/franka_human_friendly_controllers) and place the calibrated model in the urdf folder. To be sure to generate a compatible urdf model that will have the right paths specified, please run: 
+
+```bash
+python3 convert_panda_urdf.py -m panda_1
+```
+this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this file in the controller repo, urdf directory and follow the instructions on how to start the controller using the calibrated external model. 

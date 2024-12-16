@@ -4,21 +4,21 @@
   <link name="panda_link0">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link0.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link0.dae" />
       </geometry>
     </visual>
   </link>
   <link name="panda_link1">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link1.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link1.dae" />
       </geometry>
     </visual>
   </link>
   
   
   <joint name="panda_joint1" type="revolute">
-    <origin rpy="-2.0355694699737142e-05 -2.8551892429784928e-09 -1.9030793271206534e-17" xyz="-1.2935729674675946e-16 -5.696929452271708e-17 0.33300000000000024" />
+    <origin rpy="-6.478369884611035e-06 3.2531259337282877e-08 -3.351756093527367e-17" xyz="5.774688145414098e-17 2.218661989219751e-17 0.333" />
     <parent link="panda_link0" />
     <child link="panda_link1" />
     <axis xyz="0 0 1" />
@@ -29,13 +29,13 @@
   <link name="panda_link2">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link2.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link2.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint2" type="revolute">
-    <origin rpy="-1.5663717086115247 0.0009238417600107593 1.0179914805434003e-09" xyz="-0.00014805410119581621 -0.000619168563806805 3.408154257294014e-16" />
+    <origin rpy="-1.5691039237056728 0.0004677993350039688 1.4241498262028565e-10" xyz="6.869792075033197e-05 0.00019688359843828975 -2.1505593657772702e-17" />
     <parent link="panda_link1" />
     <child link="panda_link2" />
     <axis xyz="0 0 1" />
@@ -46,13 +46,13 @@
   <link name="panda_link3">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link3.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link3.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint3" type="revolute">
-    <origin rpy="1.5712448573265205 0.0003675422370507598 0.0008233251486740604" xyz="0.0003181249935433959 -0.3168341251832623 -0.0006191649945068513" />
+    <origin rpy="1.569905108582915 -0.0026702643847938334 0.00045357944186582064" xyz="4.4999344066411925e-05 -0.3168198111414633 0.00019688348264730338" />
     <parent link="panda_link2" />
     <child link="panda_link3" />
     <axis xyz="0 0 1" />
@@ -63,13 +63,13 @@
   <link name="panda_link4">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link4.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link4.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint4" type="revolute">
-    <origin rpy="1.568597543632454 0.0017324032007747278 -0.0003840582655969283" xyz="0.08199831437787787 0.0001957222099840283 0.0008346641993008366" />
+    <origin rpy="1.5691394826589014 0.0013927386555089988 0.0026538673212457547" xyz="0.08265427273481392 0.0002036643475814555 0.0008200064152495127" />
     <parent link="panda_link3" />
     <child link="panda_link4" />
     <axis xyz="0 0 1" />
@@ -80,13 +80,13 @@
   <link name="panda_link5">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link5.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link5.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint5" type="revolute">
-    <origin rpy="-1.5706033289126102 0.011486580301602819 -0.0014976198095413764" xyz="-0.08204015585311616 0.38471576074779346 -0.00019369445893610058" />
+    <origin rpy="-1.5716993777741444 0.011030878222247893 -0.0011500632899242276" xyz="-0.08204134414108213 0.3847534044806093 -0.00020189521090589624" />
     <parent link="panda_link4" />
     <child link="panda_link5" />
     <axis xyz="0 0 1" />
@@ -97,13 +97,13 @@
   <link name="panda_link6">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link6.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link6.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint6" type="revolute">
-    <origin rpy="1.567657121829646 0.002087243828705672 0.01148628749964703" xyz="0.0009333764668138829 3.071152125803715e-05 0.0007164117085875597" />
+    <origin rpy="1.565906533038832 0.002447279527486587 0.011031931752826084" xyz="0.0008069285645448682 0.0006930431259015023 0.0007541089343999483" />
     <parent link="panda_link5" />
     <child link="panda_link6" />
     <axis xyz="0 0 1" />
@@ -114,13 +114,13 @@
   <link name="panda_link7">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/link7.dae" />
+        <mesh filename="package://franka_description/meshes/visual/link7.dae" />
       </geometry>
     </visual>
   </link>
   
   <joint name="panda_joint7" type="revolute">
-    <origin rpy="1.5734147361596689 5.659518976060473e-06 -0.0019275003148919855" xyz="0.0886512928565176 -0.0014051767694575263 -1.7728949732386956e-05" />
+    <origin rpy="1.569037177169469 -3.4146334876909247e-06 -0.002277927431706217" xyz="0.08789623448965604 -0.0013118880147136493 -0.0006803956263812915" />
     <parent link="panda_link6" />
     <child link="panda_link7" />
     <axis xyz="0 0 1" />
@@ -142,7 +142,7 @@
   <link name="panda_hand">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/hand.dae" />
+        <mesh filename="package://franka_description/meshes/visual/hand.dae" />
       </geometry>
     </visual>
   </link>
@@ -165,14 +165,14 @@
   </link>
 
   <joint name="ball_joint" type="fixed">
-    <origin rpy="0.0 0.0 0.0" xyz="-0.0009106525430812897 -0.007175258660771381 0.03153248671093189" />
+    <origin rpy="0.0 0.0 0.0" xyz="-0.0009481981012812722 -0.007071742271933424 0.031439169882774995" />
     <parent link="panda_hand_tcp" />
     <child link="ball_link" />
   </joint>
   <link name="panda_leftfinger">
     <visual>
       <geometry>
-        <mesh filename="../meshes/panda/finger.dae" />
+        <mesh filename="package://franka_description/meshes/visual/finger.dae" />
       </geometry>
     </visual>
   </link>
@@ -180,7 +180,7 @@
     <visual>
       <origin rpy="0 0 3.141592653589793" xyz="0 0 0" />
       <geometry>
-        <mesh filename="../meshes/panda/finger.dae" />
+        <mesh filename="package://franka_description/meshes/visual/finger.dae" />
       </geometry>
     </visual>
   </link>

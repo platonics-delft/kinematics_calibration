@@ -88,10 +88,8 @@ def main():
 
     parameters = {
             'panda': [f"panda_joint{i}" for i in range(1, 8)] + ['ball_joint'],
-            'panda_joints': [f"panda_joint{i}" for i in range(1, 8)],
             'iiwa14': [f"joint_a{i}" for i in range(1, 8)] + ['ball_joint'],
             'gen3lite': [f"joint_{i}" for i in range(1, 7)] + ['ball_joint'],
-            'vx300': ["waist", "shoulder", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
     optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model])

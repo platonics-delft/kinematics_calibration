@@ -6,7 +6,7 @@ authors = ["Max Spahn <m.spahn@tudelft.nl>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8,<3.10"
+python = "^3.8,<3.14"
 forwardkinematics = {git = "https://github.com/maxspahn/forwardKinematics", rev = "ft-symbolic-fk"}
 yourdfpy = "^0.0.56"
 pyglet = "<2"

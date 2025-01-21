@@ -82,7 +82,7 @@ if os.path.exists(camera_setting_file):
 if eval_folder:
     q_hole_0, q_hole_1 = read_data(eval_folder)
     images = []
-    q_show = q_hole_0[0]
+    q_0 = q_hole_0[0]
     kpis = compute_statistics(robot, eval_folder, offset_distance=offset_distance)
     # kpis_core should be the same but without the keys fks_1 and fks_2
     kpis_core = {k: v for k, v in kpis.items() if k not in ['fks_1', 'fks_2']}
@@ -94,6 +94,8 @@ if eval_folder:
         kpis = {k: float(v) if isinstance(v, np.float64) else v for k, v in kpis.items()}
         yaml.dump(kpis, f)
     if overlay:
+        q_show = np.zeros(robot.num_actuated_joints)
+        q_show[:len(q_0)]=q_0
         robot.update_cfg(q_show)
         print("Move the view such that you can nicely see the end-effector. Press q in the visualization window to save the camera settings.")
         robot.show()
@@ -109,7 +111,8 @@ if eval_folder:
         for j, q_data in enumerate([q_hole_0, q_hole_1]):
             for i, q in enumerate(q_data):
                 print(f"Creating image for hole {j+1} of 2 and config {i+1}/{len(q_data)}")
-                robot.update_cfg(q)
+                q_show[:len(q)]=q
+                robot.update_cfg(q_show)
                 img_bin = robot.scene.save_image((800, 800))
                 img = Image.open(BytesIO(img_bin))
 

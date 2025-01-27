@@ -104,12 +104,14 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, o
     fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=10)
     fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=10)
     distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance, decimals=10)
+    consistency = np.round(np.sqrt(np.sum(fk_variance_1 + fk_variance_2)), decimals=10)
     if verbose:
         print(f"Mean_1: {fk_mean_1}")
         print(f"Variance_1: {fk_variance_1}")
         print(f"Mean_2: {fk_mean_2}")
         print(f"Variance_2: {fk_variance_2}")
-        print(f"Distance Error: {distance_error}")
+        print(f"Consistency: {consistency}")
+        print(f"Distortion: {distance_error}")
         print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
     kpis = {
         "mean_1": fk_mean_1.tolist(),
@@ -215,6 +217,45 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
     return statistics
 
 
+def compute_improved_performance(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, latex=False) -> None:
+
+    kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
+    nb_steps = kpis["nb_steps"]
+
+    steps = list(range(nb_steps))
+    distances_train = []
+    distances_test = [[] for _ in data_folders_test]
+    variances_train = []
+    variances_test = [[] for _ in data_folders_test]
+    print(f"Offset distance: {offset_distance}")
+
+    for step in steps:
+        print(f"Step {step}")
+        model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
+        statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
+        distance_error = statistics["distance_error"]
+        std_dev = statistics["std_dev_fk"]
+        distances_train.append(distance_error)
+        variances_train.append(std_dev)
+        for i, data_folder_test in enumerate(data_folders_test):
+            statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
+            distance_error = statistics["distance_error"]
+            std_dev = statistics["std_dev_fk"]
+            distances_test[i].append(distance_error)
+            variances_test[i].append(std_dev)
+    
+    percentage_improved_distance_train= (distances_train[0] - distances_train[-1])/distances_train[0] * 100
+    percentage_improved_variance_train= (variances_train[0] - variances_train[-1])/variances_train[0] * 100
+    percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
+    percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
+    print (f"The consistency when from {variances_train[0]:.4E} to {variances_train[-1]:.4E} on the training data")
+    print (f"The distortion when from {distances_train[0]:.4E} to {distances_train[-1]:.4E} on the training data")
+    print (f"The consistency when from {np.mean(np.array(variances_test)[:,0]):.4E} to {np.mean(np.array(variances_test)[:,-1]):.4E} on the test data on average")
+    print (f"The distortion when from {np.mean(np.array(distances_test)[:,0]):.4E} to {np.mean(np.array(distances_test)[:,-1]):.4E} on the test data on average")
+    print(f"Percentage of removed error on training set: {percentage_improved_variance_train}")
+    print(f"Percentage of removed distortion error on training set: {percentage_improved_distance_train}")
+    print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
+    print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
 
 def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, latex=False) -> None:
 
@@ -277,12 +318,13 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
             ax.plot(steps, distances, color='orange', alpha=0.5)
 
     # set legend
-    ax.legend()
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\epsilon$ [m]")
+    fontsize=16
+    ax.legend(fontsize=fontsize)
+    ax.set_xlabel("Step", fontsize=fontsize)
+    ax.set_ylabel("$\epsilon$ [m]", fontsize=fontsize)
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     # only show the step at every 5th
-    ax.xaxis.set_major_locator(plt.MultipleLocator(5))
+    ax.xaxis.set_major_locator(plt.MultipleLocator(1))
 
     ax.set_ylim(1e-7, 1e-2)
     # set title
@@ -312,14 +354,14 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
         else:
             ax.plot(steps, variances, color='orange', alpha=0.5)
 
-    ax.legend()
+    ax.legend(fontsize=fontsize)
     # can you put the x-axis label at the right end below the figure?
-    ax.set_xlabel("Step")
-    ax.set_ylabel("$\sigma$ [m]")
+    ax.set_xlabel("Step", fontsize=fontsize)
+    ax.set_ylabel("$\sigma$ [m]",fontsize=fontsize)
 
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     # only show the step at every 5th
-    ax.xaxis.set_major_locator(plt.MultipleLocator(5))
+    ax.xaxis.set_major_locator(plt.MultipleLocator(1))
     ax.set_ylim(1e-4, 3e-2)
 
     # make size of figure suitable for journal paper IEEE standard

@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image
 from yourdfpy import URDF
 
-
+from io import BytesIO
 
 
 OFFSET_DISTANCE = 0.05
@@ -68,6 +68,9 @@ def replace_mesh_with_cylinder(urdf_file, out_file: str) -> str:
     return out_file
 
 def overlay_images(images: list , output_path: str):
+    images = [Image.open(BytesIO(img)) for img in images]
+    # convert images into numpy arrays
+    images = [np.array(img.convert("RGBA")).astype(np.float32) for img in images]
     width, height = images[0].shape[1], images[0].shape[0]
     assert all(img.shape[0] == height and img.shape[1] == width for img in images), "All images must have the same dimensions!"
 
@@ -78,6 +81,27 @@ def overlay_images(images: list , output_path: str):
     result_image.save(output_path)
     # show the image
     result_image.show()
+
+def overlay_images_2(images: list, output_path: str):
+    from rembg import remove
+
+    """
+    Overlays multiple images after removing their backgrounds and saves the result.
+    """
+    # Remove the background from all images using rembg
+    images = [remove(img) for img in images]
+    images = [Image.open(BytesIO(img)) for img in images]
+    # Assuming 'images' is a list of Image objects with transparent backgrounds (RGBA)
+    overlay = Image.new("RGBA", images[0].size, (0, 0, 0, 0))  # Create a blank image with the same size
+
+    # Blend with transparency
+    for img in images:
+        # Composite
+        overlay = Image.alpha_composite(overlay, img)
+        
+    # Optionally save the result
+    overlay.save(output_path)
+    overlay.show()
 
 def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, offset_distance: float=0.05) -> dict:
 

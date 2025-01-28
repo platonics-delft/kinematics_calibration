@@ -28,7 +28,7 @@ args = argument_parser.parse_args()
 
 model = args.model
 with_mesh = not args.without_mesh
-eval_name = args.data
+data = args.data
 # show_urdf = True
 overlay = args.overlay
 script_directory = os.path.abspath(__file__)
@@ -42,25 +42,15 @@ model_config = yaml.load(open(output_folder+ "/config.yaml", 'r'), Loader=yaml.F
 urdf_name = model_config["urdf"]
 
 urdf_file = output_folder + "/" + urdf_name + ".urdf"
-eval_folder = os.path.abspath(os.path.join(parent_directory, 'data', eval_name))
+eval_folder = os.path.abspath(os.path.join(parent_directory, 'data', data))
 
 ## extract the last part of the path 
-data_folder_name = eval_name.split('/')[-1]
+data_folder_name = data.split('/')[-1]
 
 os.makedirs(f"{output_folder}/images", exist_ok=True)
 
 
-
-if overlay  and eval_folder is None:
-    print("Please specify the evaluation folder if you want an overlay.")
-    sys.exit(1)
-
-if with_mesh:
-    modified_urdf = urdf_file
-else:
-    modified_urdf = replace_mesh_with_cylinder(urdf_file)
-
-robot = yourdfpy.URDF.load(modified_urdf)
+robot = yourdfpy.URDF.load(urdf_file)
 dof = len(robot.actuated_joints)
 q_show = [0, ] * dof
 counter = 0
@@ -68,15 +58,6 @@ for joint in robot.robot.joints:
     if joint.type == "revolute":
         q_show[counter] = (joint.limit.lower + joint.limit.upper) / 2
         counter += 1
-
-
-if os.path.exists(camera_setting_file):
-    with open(camera_setting_file, 'r') as f:
-        saved_camera = json.load(f)
-
-    robot.scene.camera_transform = saved_camera['transform']
-    robot.scene.camera.fov = saved_camera['fov']
-
 
 
 if eval_folder:
@@ -93,50 +74,6 @@ if eval_folder:
         # convert all numpy floats to python floats
         kpis = {k: float(v) if isinstance(v, np.float64) else v for k, v in kpis.items()}
         yaml.dump(kpis, f)
-    if overlay:
-        q_show = np.zeros(robot.num_actuated_joints)
-        q_show[:len(q_0)]=q_0
-        robot.update_cfg(q_show)
-        print("Move the view such that you can nicely see the end-effector. Press q in the visualization window to save the camera settings.")
-        robot.show()
-        saved_camera = {
-            'transform': robot.scene.camera_transform.tolist(), 
-            'fov': robot.scene.camera.fov.tolist(),
-        }
 
-        print(f"Camera settings saved in: {camera_setting_file}")
-        with open(camera_setting_file, 'w') as f:
-            json.dump(saved_camera, f)
-
-        for j, q_data in enumerate([q_hole_0, q_hole_1]):
-            for i, q in enumerate(q_data):
-                print(f"Creating image for hole {j+1} of 2 and config {i+1}/{len(q_data)}")
-                q_show[:len(q)]=q
-                robot.update_cfg(q_show)
-                img_bin = robot.scene.save_image((800, 800))
-                img = Image.open(BytesIO(img_bin))
-
-                img_array = np.array(img.convert("RGBA")).astype(np.float32)
-
-
-                images.append(img_array)
-                with open(f'{output_folder}/images/hole_{j}_config_{i}.png', 'wb') as f:
-                    f.write(img_bin)
-        overlay_images(images, f"{output_folder}/overlay_"+ data_folder_name + ".png")
-
-
-
-
-
-
-if overlay and not eval_folder:
-    robot.update_cfg(q_show)
-    robot.show()
-    saved_camera = {
-        'transform': robot.scene.camera_transform.tolist(), 
-        'fov': robot.scene.camera.fov.tolist(),
-    }
-
-    print(f"Camera settings saved in: {camera_setting_file}")
 
 

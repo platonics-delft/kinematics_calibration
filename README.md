@@ -99,12 +99,17 @@ python3 run_optimizer.py --model panda --data panda_1/front
 To diplay how good the model gets, we diplay the learning and the validation curves by running 
 
 ```bash
-python3 create_plots.py --model panda_1
+python3 generate_learning_curve.py --model panda_1
 ```
 This will display the consistency and the distortion of the model both on the training set but also in any other of the dataset that is in the folder data/panda_1. 
 For example:
-![Alt Text](imgs/calibration_curve.png)
-The right left figure shows the distortion of the robot, i.e. the error in the distance between the two set of points for socket 0 ad socket 1. We exected the distance to be at 0.05 m, so we can compute the error of our measurement. The second curve is the consistency, i.e. the variance of the different forward kinematics positions for each of the two holes. THe optimization is trying to make the robot consistent and less distorted as possible, that is why you see the curve to go down.
+<p float="left">
+  <img src="imgs/consistency.png" alt="Consistency" width="300" />
+  <img src="imgs/distortion.png" alt="Distortion" width="300" />
+</p>
+The left curve is the consistency, i.e. the variance of the different forward kinematics positions for each of the two holes. The optimization is trying to make the robot consistent and less distorted as possible, that is why you see the curve to go down.
+The right figure shows the distortion of the robot, i.e. the error in the distance between the two set of points for socket 0 ad socket 1. We exected the distance to be at 0.05 m, so we can compute the error of our measurement. 
+
 ## Evaluate a calibrated model on a particular dataset
 
 You can evaluate the calibrated model on any dataset that you recorded for that robot
@@ -127,7 +132,32 @@ You will get some numbers as outputs:
 - 'std_dev_2': 0.00028558583889686857,
 - 'std_dev_fk': 0.00039499977384835393
 
-By passing the `--overlay` flag an overlay of all the configuration is saved to the calibrated_urdf/panda_1.
+You can also show the improved performance from the original nominal model to the obtained calibrated model. 
+
+```bash
+python3 compute_improved_performance.py  --model panda_1
+```
+
+The terminal will output the following statistics:
+
+- The consistency when from 1.2716E-02 to 2.3783E-04 on the training data
+- The distortion when from 4.3804E-03 to 2.2794E-06 on the training data
+- The consistency when from 1.3118E-02 to 5.3291E-04 on the test data on average
+- The distortion when from 2.4071E-03 to 1.6866E-04 on the test data on average
+Percentage of removed error on training set: 98.12971564632001
+- Percentage of removed distortion error on training set: 99.94796380540399
+- Percentage of removed error on test set: 95.93608375730201
+- Percentage of removed distortion error on test set 83.80232142397945
+
+We can read the on the training set but also in the test set, 95 % of the consistency error was removed after the calibration. This makes the robot to be almost perfectly calibrated. 
+
+### Visualize the overlay of the robot prediction
+You can generate also an overlay of the robot in the different configurations that were recorded. For example 
+```bash
+python3 generate_overlay.py  --model panda_1 --data panda_1/front 
+```
+This will prompt a window with a visualization of the robot. Move the view such that you can nicely see the end-effector. Press q in the visualization window to save the camera setting with the point of view.
+If you run the overlay again, you can also avoid to generate all the images of the poses. Just pass the flag --no-generate-images .
 
 If the optimization was successful the overlay will look like this: 
 
@@ -136,6 +166,12 @@ If the optimization was successful the overlay will look like this:
 
 You can notice that the forward kinematics is very consistent by the diplayed red dot of the learned shpere attached at the end effector. 
 
+The overlay of the nominal uncalibrated model, will look more like this:
+
+![Alt Text](imgs/overlaynominal.png)
+
+In this case, you can see that the forward kinematics is not consistent, as indicated by the scattered red dots of the learned sphere attached at the end effector.
+
 ### Use the panda urdf for a calibrated Cartesina impedance controller. 
 
 You can use the [Franka human friendly controllers](https://github.com/franzesegiovanni/franka_human_friendly_controllers) and place the calibrated model in the urdf folder. To be sure to generate a compatible urdf model that will have the right paths specified, please run: 
@@ -143,4 +179,4 @@ You can use the [Franka human friendly controllers](https://github.com/franzeseg
 ```bash
 python3 convert_panda_urdf.py -m panda_1
 ```
-this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this file in the controller repo, urdf directory and follow the instructions on how to start the controller using the calibrated external model. 
+this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this file in the controller repo ( in the urdf directory) and follow the instructions on how to start the controller using the calibrated external model. 

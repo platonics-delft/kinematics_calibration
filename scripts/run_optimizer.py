@@ -20,7 +20,6 @@ def main():
     argument_parser.add_argument("--variance_noise", "-v", help="Variance of the noise injected to the initial robot parameters", default=0.00)
     argument_parser.add_argument("--number-samples", "-n", help="Number of samples to use", default=None)
     #argument_parser.add_argument("--robot", "-r", help="Robot type", default="panda")
-    #argument_parser.add_argument("--overwrite", "-w", help="Overwrite the output folder", action="store_true")
     #argument_parser.add_argument("--steps", "-s", help="Saving intermediate results", action="store_true")
 
 
@@ -28,14 +27,11 @@ def main():
     model = args.model
     data = args.data
     robot_name = os.path.dirname(data)
-    
     variance_noise = float(args.variance_noise)
     end_effector = args.end_effector
     root_link = args.root_link
 
-    #overwrite = args.overwrite
     # saving_steps = args.steps
-    overwrite = True
     saving_steps = True
     number_samples = args.number_samples
     offset_distance = float(args.offset_distance)
@@ -53,9 +49,40 @@ def main():
     data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', model + ".urdf"))
 
-    
-    if overwrite:
-        shutil.rmtree(output_path, ignore_errors=True)
+    if not os.path.exists(urdf_path):
+        filename = os.path.splitext(os.path.basename(urdf_path))[0]
+        print(f"URDF file {filename} does not exist.")
+        # show the available model that can be used in from the folder urdf
+        print("Available models are: ")
+        for file in os.listdir(os.path.abspath(os.path.join(parent_directory, 'urdf'))):
+            filename = os.path.splitext(file)[0]  # Get name without extension
+            print(filename)
+        sys.exit(1)
+
+    if not os.path.exists(data_path):
+        print(f"Data folder {data} does not exist.")
+        # Check if the data folder exists and the urdf path exists, otherwise exit
+        data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+        print("Available data folders are: ")
+        # List first level directories
+        for d in sorted(os.listdir(data_root)):
+            d_path = os.path.join(data_root, d)
+            # print(d)
+            if os.path.isdir(d_path):
+                print(f"    {d}/")
+                # List second level directories
+                for subd in os.listdir(d_path):
+                    subd_path = os.path.join(d_path, subd)
+                    if os.path.isdir(subd_path):
+                        print(f"        {subd}")
+        sys.exit(1)
+
+
+    #Does the output folder already exist?
+    print("Output path: ", output_path)
+    print(os.path.exists(output_path))  
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
 
     if os.path.exists(output_path):
         print(f"Output folder {output_path} already exists. Please delete it or specify a different folder.")
@@ -68,7 +95,6 @@ def main():
             'end_effector': end_effector,
             'root_link': root_link,
             'robot_name': robot_name,
-            'overwrite': overwrite,
             'saving_steps': saving_steps,
             'number_samples': number_samples,
             'offset_distance': offset_distance,

@@ -98,7 +98,7 @@ def overlay_images_2(images: list, output_path: str):
     for img in images:
         # Composite
         overlay = Image.alpha_composite(overlay, img)
-        
+
     # Optionally save the result
     overlay.save(output_path)
     overlay.show()
@@ -342,7 +342,7 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
             ax.plot(steps, distances, color='orange', alpha=0.5)
 
     # set legend
-    fontsize=16
+    fontsize=20
     ax.legend(fontsize=fontsize)
     ax.set_xlabel("Step", fontsize=fontsize)
     ax.set_ylabel("$\epsilon$ [m]", fontsize=fontsize)
@@ -351,6 +351,8 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
 
     ax.set_ylim(1e-7, 1e-2)
+    # set fontsize of the x and y numbers
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
     # set title
 
     # the figure should have tight margins but the legend should not be cut off
@@ -358,8 +360,7 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     # fig.set_size_inches(3.487/2, 1.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    # plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
-
+    plt.tight_layout()
     if latex:
         plt.savefig(f"{model_folder}/distortion.pgf")
     else:
@@ -368,47 +369,31 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     fig, ax = plt.subplots(1, 1)
 
     ax.set_yscale("log")
-    #ax[1].plot(steps, variances_train, label=train_name.replace('_', '-'), color='black')
     ax.plot(steps, variances_train, label="train", color='blue')
     for i, variances in enumerate(variances_test):
-        name = data_folders_test[i].split("/")[-1]
-        #ax.plot(steps, variances, label=f"{name.replace('_', '-')}", alpha=0.5)
         if i == 0:
             ax.plot(steps, variances, label="validation", color='orange', alpha=0.5)
         else:
             ax.plot(steps, variances, color='orange', alpha=0.5)
 
     ax.legend(fontsize=fontsize)
-    # can you put the x-axis label at the right end below the figure?
     ax.set_xlabel("Step", fontsize=fontsize)
-    ax.set_ylabel("$\sigma$ [m]",fontsize=fontsize)
+    ax.set_ylabel("$\sigma$ [m]", fontsize=fontsize)
 
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    # only show the step at every 5th
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
     ax.set_ylim(1e-4, 3e-2)
 
-    # make size of figure suitable for journal paper IEEE standard
-    # fig.set_size_inches(3.487/2, 1.5)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
-
-    # plt.subplots_adjust(left=0.35, right=1.0, top=1.0, bottom=0.38)
+    plt.tight_layout()
     if latex:
         plt.savefig(f"{model_folder}/consistency.pgf")
     else:
         plt.savefig(f"{model_folder}/consistency.png")
-    """
 
-    ax[2].set_yscale("log")
-    ax[2].plot(steps, std_devs_z, color='blue')
-    
-    #ax[2].set_xlabel("Step")
-    ax[2].xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax[2].set_ylim(1e-4, 1e-1)
-    ax[2].set_title("Height consistency")
-    """
     plt.show()
 
 

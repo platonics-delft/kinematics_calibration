@@ -8,10 +8,12 @@ def main():
     parser = argparse.ArgumentParser(description='Create plots for the calibration data')
     parser.add_argument('--model', "-m", type=str, help='Calibrated robot model. Saved in the calibrated_urdf folder.')
     parser.add_argument('--latex', "-l", action='store_true', help='Use latex for saving of the plots as .pgf. If not they are saved as png.')
+    parser.add_argument('--repeatability', "-r", type=float, default=0.1, help='Repeatability of the robot in mm. Default is 0.1 mm.')
     args = parser.parse_args()
 
     model = args.model
     latex = args.latex
+    repeatability = args.repeatability * 1e-3 # Convert to meters
     script_directory = os.path.abspath(__file__)
     parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
     model_folder = parent_directory + "/calibrated_urdf/" + model
@@ -27,8 +29,7 @@ def main():
     print(f"Model folder: {model_folder}")
     print(f"Training data: {training_data}")
     print(f"Evaluation data: {evaluation_data}")
-
-    plot_training_curves(model_folder, training_data, evaluation_data, offset_distance, latex)
+    plot_training_curves(model_folder, training_data, evaluation_data, offset_distance, repeatability,  latex)
 
 if __name__ == "__main__":
     main()

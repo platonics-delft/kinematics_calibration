@@ -199,7 +199,7 @@ def set_axes_equal(ax) -> np.ndarray:
     return limits
 
 def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
-    print(f"Data folder {data_folder}")
+    # print(f"Data folder {data_folder}")
     data_hole_0, data_hole_1 = read_data(data_folder)
 
     fks_1 = np.zeros((len(data_hole_0), 3))
@@ -247,6 +247,7 @@ def compute_improved_performance(model_folder: str, data_folder_train: str, data
     nb_steps = kpis["nb_steps"]
 
     steps = list(range(nb_steps))
+    steps = [0, nb_steps ]
     distances_train = []
     distances_test = [[] for _ in data_folders_test]
     variances_train = []
@@ -272,17 +273,16 @@ def compute_improved_performance(model_folder: str, data_folder_train: str, data
     percentage_improved_variance_train= (variances_train[0] - variances_train[-1])/variances_train[0] * 100
     percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
     percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
-    print (f"The consistency when from {variances_train[0]:.4E} to {variances_train[-1]:.4E} on the training data")
-    print (f"The distortion when from {distances_train[0]:.4E} to {distances_train[-1]:.4E} on the training data")
-    print (f"The consistency when from {np.mean(np.array(variances_test)[:,0]):.4E} to {np.mean(np.array(variances_test)[:,-1]):.4E} on the test data on average")
-    print (f"The distortion when from {np.mean(np.array(distances_test)[:,0]):.4E} to {np.mean(np.array(distances_test)[:,-1]):.4E} on the test data on average")
+    print (f"The consistency went from {variances_train[0]:.4E} to {variances_train[-1]:.4E} on the training data")
+    print (f"The distortion went from {distances_train[0]:.4E} to {distances_train[-1]:.4E} on the training data")
+    print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.4E} to {np.mean(np.array(variances_test)[:,-1]):.4E} on the test data on average")
+    print (f"The distortion went from {np.mean(np.array(distances_test)[:,0]):.4E} to {np.mean(np.array(distances_test)[:,-1]):.4E} on the test data on average")
     print(f"Percentage of removed error on training set: {percentage_improved_variance_train}")
     print(f"Percentage of removed distortion error on training set: {percentage_improved_distance_train}")
     print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
     print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
 
-def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, latex=False) -> None:
-
+def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False) -> None:
     if latex == True:
         plt.rcParams.update({
         "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
@@ -294,7 +294,7 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     nb_steps = kpis["nb_steps"]
     train_name = data_folder_train.split("/")[-1]
 
-    steps = list(range(nb_steps))
+    steps = list(range(nb_steps+1))
     distances_train = []
     distances_test = [[] for _ in data_folders_test]
     variances_train = []
@@ -332,15 +332,17 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     fig, ax = plt.subplots(1, 1)
     # make log scale
     ax.set_yscale("log")
-    ax.plot(steps, distances_train, label="train", color='blue')
+    ax.plot(steps, distances_train, label="train", color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
         #ax.plot(steps, distances, label=f"{name.replace('_', '-')}", alpha=0.5)
         if i == 0:
-            ax.plot(steps, distances, label="validation", color='orange', alpha=0.5)
+            ax.plot(steps, distances, label="validation", color='orange', linewidth=3,alpha=0.8)
         else:
-            ax.plot(steps, distances, color='orange', alpha=0.5)
-
+            ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
+    #plot dashed horixzaon line at the repeatibility value
+    print(f"Repeatability: {repeatability}")
+    ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
     # set legend
     fontsize=20
     ax.legend(fontsize=fontsize)
@@ -350,7 +352,8 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     # only show the step at every 5th
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
 
-    ax.set_ylim(1e-7, 1e-2)
+    ax.set_ylim(1e-6, 1e-2)
+
     # set fontsize of the x and y numbers
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     # set title
@@ -369,16 +372,17 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     fig, ax = plt.subplots(1, 1)
 
     ax.set_yscale("log")
-    ax.plot(steps, variances_train, label="train", color='blue')
+    ax.plot(steps, variances_train, label="train", color='blue', linewidth=3)
     for i, variances in enumerate(variances_test):
         if i == 0:
-            ax.plot(steps, variances, label="validation", color='orange', alpha=0.5)
+            ax.plot(steps, variances, label="validation", color='orange', linewidth=3, alpha=0.8)
         else:
-            ax.plot(steps, variances, color='orange', alpha=0.5)
+            ax.plot(steps, variances, color='orange', linewidth=3, alpha=0.8)
 
     ax.legend(fontsize=fontsize)
     ax.set_xlabel("Step", fontsize=fontsize)
     ax.set_ylabel("$\sigma$ [m]", fontsize=fontsize)
+    ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
 
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))

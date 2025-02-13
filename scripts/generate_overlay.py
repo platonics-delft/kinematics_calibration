@@ -17,8 +17,8 @@ argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("--model", "-m", help="calibrated robot model. Saved in the calibrated_urdf folder. ")
 argument_parser.add_argument("--data", "-d", help="Specify the folder to evaluate the model on. The data should be stored in the data folder.")
 argument_parser.add_argument("--camera-settings", "-c", help="Camera settings file", default="camera_settings.json")
-argument_parser.add_argument("--no-generate-images", "-g", help="Pass this flag if you do not want to generate images again but only perform the overlay", action="store_true")
-argument_parser.add_argument("--max-images", "-mi", help="Maximum number of images to overlay", default=10, type=int)
+argument_parser.add_argument("--no-generate-images", "-n", help="Pass this flag if you do not want to generate images again but only perform the overlay", action="store_true")
+argument_parser.add_argument("--max-images", "-mi", help="Maximum number of images to overlay", default=20, type=int)
 args = argument_parser.parse_args()
 
 model = args.model

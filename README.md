@@ -44,6 +44,7 @@ Here is an example for calibrating the kuka for example:
 rosrun calibration_tools record_joint_states_dataset --joint-state-topic-name /joint_states --robot-name kuka_1  --tool-position-on-table front --robot-dof 7 
 ```
 For the robot name we advice to use the name of the robot and a number considering that you want to calibrate more than one robot with the same name. The position of the tool is to distinguish the different datasets if more one for different calibration tool are recorded.  
+The ros topic /joint_states must be of type [sensor_msgs/JointState](https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/JointState.html). 
 
 What to do when the code runs: 
 
@@ -140,10 +141,10 @@ python3 compute_improved_performance.py  --model panda_1
 
 The terminal will output the following statistics:
 
-- The consistency when from 1.2716E-02 to 2.3783E-04 on the training data
-- The distortion when from 4.3804E-03 to 2.2794E-06 on the training data
-- The consistency when from 1.3118E-02 to 5.3291E-04 on the test data on average
-- The distortion when from 2.4071E-03 to 1.6866E-04 on the test data on average
+- The consistency went from 1.2716E-02 to 2.3783E-04 on the training data
+- The distortion went from 4.3804E-03 to 2.2794E-06 on the training data
+- The consistency went from 1.3118E-02 to 5.3291E-04 on the test data on average
+- The distortion went from 2.4071E-03 to 1.6866E-04 on the test data on average
 Percentage of removed error on training set: 98.12971564632001
 - Percentage of removed distortion error on training set: 99.94796380540399
 - Percentage of removed error on test set: 95.93608375730201

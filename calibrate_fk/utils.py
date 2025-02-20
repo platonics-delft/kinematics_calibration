@@ -219,13 +219,22 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
 
 
     fk_mean_1 = np.mean(fks_1, axis=0)
+    N_1 = len(fks_1)
     fk_mean_2 = np.mean(fks_2, axis=0)
+    N_2 = len(fks_2)
     fk_variance_1 = np.sum(np.var(fks_1, axis=0))
     fk_variance_2 = np.sum(np.var(fks_2, axis=0))
     average_z_1 = np.mean(fks_1[:, 2])
     average_z_2 = np.mean(fks_2[:, 2])
     distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
-    std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2)
+    # breakpoint()    
+    # average_absolute_error 
+    fks_1_average = np.mean(np.linalg.norm(np.abs(fks_1 - fk_mean_1), axis=1))  
+    fks_2_average = np.mean(np.linalg.norm(np.abs(fks_2 - fk_mean_2), axis=1))
+    weighted_average = (N_1 * fks_1_average + N_2 * fks_2_average)/(N_1 + N_2)
+    std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2) # this is not the actual error 
+    mean_squared_error = (fk_variance_1  * N_1 + fk_variance_2 * N_2)/(N_1+N_2)
+    std_dev_fk = np.sqrt(mean_squared_error) 
     average_z = np.linalg.norm(average_z_1 - average_z_2)
     statistics = {
         "mean_1": fk_mean_1,
@@ -236,6 +245,7 @@ def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0
         "height_error": average_z,
         "fks_1": fks_1,
         "fks_2": fks_2,
+        "mean_absolute_error": weighted_average,
         "std_dev_fk": std_dev_fk,
     }
     return statistics
@@ -250,8 +260,12 @@ def compute_improved_performance(model_folder: str, data_folder_train: str, data
     steps = [0, nb_steps ]
     distances_train = []
     distances_test = [[] for _ in data_folders_test]
+
     variances_train = []
     variances_test = [[] for _ in data_folders_test]
+
+    mae_train = []
+    mae_test = [[] for _ in data_folders_test]
     print(f"Offset distance: {offset_distance}")
 
     for step in steps:
@@ -260,27 +274,41 @@ def compute_improved_performance(model_folder: str, data_folder_train: str, data
         statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
         distance_error = statistics["distance_error"]
         std_dev = statistics["std_dev_fk"]
+        mae=statistics["mean_absolute_error"]
         distances_train.append(distance_error)
         variances_train.append(std_dev)
+        mae_train.append(mae)
         for i, data_folder_test in enumerate(data_folders_test):
             statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
             distance_error = statistics["distance_error"]
             std_dev = statistics["std_dev_fk"]
+            mae=statistics["mean_absolute_error"]
+
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
+            mae_test[i].append(mae)
     
     percentage_improved_distance_train= (distances_train[0] - distances_train[-1])/distances_train[0] * 100
     percentage_improved_variance_train= (variances_train[0] - variances_train[-1])/variances_train[0] * 100
+    percentage_improved_mae_train = (mae_train[0] - mae_train[-1])/mae_train[0] * 100
     percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
     percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
-    print (f"The consistency went from {variances_train[0]:.4E} to {variances_train[-1]:.4E} on the training data")
-    print (f"The distortion went from {distances_train[0]:.4E} to {distances_train[-1]:.4E} on the training data")
-    print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.4E} to {np.mean(np.array(variances_test)[:,-1]):.4E} on the test data on average")
-    print (f"The distortion went from {np.mean(np.array(distances_test)[:,0]):.4E} to {np.mean(np.array(distances_test)[:,-1]):.4E} on the test data on average")
-    print(f"Percentage of removed error on training set: {percentage_improved_variance_train}")
-    print(f"Percentage of removed distortion error on training set: {percentage_improved_distance_train}")
-    print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
-    print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
+    percentage_improved_mae_test =  [(mae_test[i][0] - mae_test[i][-1])/mae_test[i][0] * 100 for i in range(len(data_folders_test))]
+    print (f"The mean absolute error went from {mae_train[0]:.2e} to {mae_train[-1]:.2e} on the training data")
+    # print (f"The consistency went from {variances_train[0]:.2e} to {variances_train[-1]:.2e} on the training data")
+    # print (f"The distortion went from {distances_train[0]:.2e} to {distances_train[-1]:.2e} on the training data")
+
+    print(f"Percentage of removed error on training set: {percentage_improved_mae_train:.2f}")
+    # print(f"Percentage of removed error on training set: {percentage_improved_variance_train}")
+    # print(f"Percentage of removed distortion error on training set: {percentage_improved_distance_train}")
+
+    print (f"The mean absolute error  went from {np.mean(np.array(mae_test)[:,0]):.2e} to {np.mean(np.array(mae_test)[:,-1]):.2e} on the test data on average")
+    # print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.2e} to {np.mean(np.array(variances_test)[:,-1]):.2e} on the test data on average")
+    # print (f"The distortion went from {np.mean(np.array(distances_test)[:,0]):.2e} to {np.mean(np.array(distances_test)[:,-1]):.2e} on the test data on average")
+    
+    print(f"Percentage of removed error on test set: {np.mean(percentage_improved_mae_test):.2f}")
+    # print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
+    # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
 
 def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False) -> None:
     if latex == True:
@@ -352,7 +380,8 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     # only show the step at every 5th
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
 
-    ax.set_ylim(1e-6, 1e-2)
+    ax.set_ylim(1e-7, 1e-2)
+    # ax.set_ylim(1e-4/2, 3e-2)
 
     # set fontsize of the x and y numbers
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
@@ -387,7 +416,7 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     ax.tick_params(axis='both', which='major', labelsize=fontsize)
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.xaxis.set_major_locator(plt.MultipleLocator(1))
-    ax.set_ylim(1e-4, 3e-2)
+    ax.set_ylim(1e-4/2, 3e-2)
 
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)

@@ -236,23 +236,29 @@ class ParameterOptimizer():
             fks_2.append(substituted_fk)
 
         fk_mean_1 = ca.sum2(ca.horzcat(*fks_1)) / len(fks_1)
+        N1 = len(fks_1)
         fk_variance_1 = ca.sum2(ca.horzcat(*[(fk - fk_mean_1)**2 for fk in fks_1])) / len(fks_1)
         fk_variance_norm_1 = ca.sum1(fk_variance_1)
         fk_mean_2 = ca.sum2(ca.horzcat(*fks_2)) / len(fks_2)
+        N2 = len(fks_2)
         fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
         fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
-        distance_error = (ca.norm_2(fk_mean_1[0:2] - fk_mean_2[0:2]) - self._offset_distance)**2
+        distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
+        # distance_error = ca.fmax(distance_error - repeatability, 0)
+        distance_error_squared = distance_error**2
         # height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 
 
 
-        objective = fk_variance_norm_1 + fk_variance_norm_2 + distance_error# + height_error
+        objective = (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2) + distance_error_squared
 
         residuals = []
         for joint_name, joint_params in self._params.items():
             for param_name, param in joint_params.items():
                 param_epsilon = param - self._initial_params[joint_name][param_name]
-                residuals.append(param_epsilon**2)
+                #aggregate onlyy if the name of the joint is not ball_joint
+                if joint_name != "ball_joint":
+                    residuals.append(param_epsilon**2)
         objective += self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
 
 

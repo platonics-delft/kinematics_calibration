@@ -22,24 +22,49 @@ argument_parser.add_argument("--max-images", "-mi", help="Maximum number of imag
 args = argument_parser.parse_args()
 
 model = args.model
-eval_name = args.data
+data = args.data
 max_images = args.max_images
 script_directory = os.path.abspath(__file__)
 parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
-output_folder = parent_directory + "/calibrated_urdf/" + model
+model_folder = parent_directory + "/calibrated_urdf/" + model
 camera_setting_file = args.camera_settings
 generate_images = not(args.no_generate_images)
 
-model_config = yaml.load(open(output_folder+ "/config.yaml", 'r'), Loader=yaml.FullLoader)
+if not os.path.exists(model_folder):
+    print(f"model {model} does not exist in calibrated_urdf. Did you already run the optimizer?")
+    # Check if the data folder exists and the urdf path exists, otherwise exit
+    data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+    print("Available calibrated models that can be evaluated are: ")
+    # List first level directories
+    for d in sorted(os.listdir(data_root)):
+        if d == "README.md":
+            continue
+        print(f"    {d}")
+    sys.exit(1)
+
+
+model_config = yaml.load(open(model_folder+ "/config.yaml", 'r'), Loader=yaml.FullLoader)
 urdf_name = model_config["urdf"]
 
-urdf_file = output_folder + "/" + urdf_name + ".urdf"
-eval_folder = os.path.abspath(os.path.join(parent_directory, 'data', eval_name))
+urdf_file = model_folder + "/" + urdf_name + ".urdf"
+data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
 
+if not os.path.exists(data_path):
+    print(f"Data folder {data} does not exist in the data folder.")
+    # Check if the data folder exists and the urdf path exists, otherwise exit
+    data_root = os.path.abspath(os.path.join(parent_directory, 'data', model))
+    print("Suggested data folders are: ")
+    # List first level directories
+    for d in sorted(os.listdir(data_root)):
+        d_path = os.path.join(data_root, d)
+        if os.path.isdir(d_path):
+            print(f"{model}/{d}")
+            # List second level directories
+    sys.exit(1)
 ## extract the last part of the path 
-data_folder_name = eval_name.split('/')[-1]
+data_folder_name = data.split('/')[-1]
 
-os.makedirs(f"{output_folder}/images/{data_folder_name}", exist_ok=True)
+os.makedirs(f"{model_folder}/images/{data_folder_name}", exist_ok=True)
 
 
 robot = yourdfpy.URDF.load(urdf_file)
@@ -62,7 +87,7 @@ if os.path.exists(camera_setting_file):
 
 
 if generate_images:
-    q_hole_0, q_hole_1 = read_data(eval_folder)
+    q_hole_0, q_hole_1 = read_data(data_path)
     images = []
     q_0 = q_hole_0[0]
     q_show = np.zeros(robot.num_actuated_joints)
@@ -92,14 +117,14 @@ if generate_images:
 
 
             images.append(img_array)
-            with open(f'{output_folder}/images/{data_folder_name}/hole_{j}_config_{i}.png', 'wb') as f:
+            with open(f'{model_folder}/images/{data_folder_name}/hole_{j}_config_{i}.png', 'wb') as f:
                 f.write(img_bin)
     
     # 
 # Open the input image and read the image data in the folder input_path and append it to the input_image list
 output_image = []
-input_path = f"{output_folder}/images/{data_folder_name}/"
-output_path = f"{output_folder}/overlay_"+ data_folder_name + ".png"
+input_path = f"{model_folder}/images/{data_folder_name}/"
+output_path = f"{model_folder}/overlay_"+ data_folder_name + ".png"
 all_files = os.listdir(input_path)
 image_files = [f for f in all_files if f.endswith(('.png', '.jpg', '.jpeg'))]
 
@@ -123,7 +148,7 @@ overlay_images(output_image, output_path)
 
 
 
-# if overlay and not eval_folder:
+# if overlay and not data_path:
 #     robot.update_cfg(q_show)
 #     robot.show()
 #     saved_camera = {

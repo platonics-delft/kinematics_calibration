@@ -94,7 +94,6 @@ def main():
             'variance_noise': variance_noise,
             'end_effector': end_effector,
             'root_link': root_link,
-            'robot_name': robot_name,
             'saving_steps': saving_steps,
             'number_samples': number_samples,
             'offset_distance': offset_distance,

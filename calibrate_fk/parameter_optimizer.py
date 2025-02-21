@@ -245,6 +245,7 @@ class ParameterOptimizer():
         fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
         distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
+        # repeatability = 0.0001
         # distance_error = ca.fmax(distance_error - repeatability, 0)
         distance_error_squared = distance_error**2
         # height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 

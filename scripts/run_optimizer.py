@@ -16,12 +16,8 @@ def main():
     argument_parser.add_argument("--regularizer", "-reg", help="Regularizer for the optimization", default=1e-4)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
-
     argument_parser.add_argument("--variance_noise", "-v", help="Variance of the noise injected to the initial robot parameters", default=0.00)
     argument_parser.add_argument("--number-samples", "-n", help="Number of samples to use", default=None)
-    #argument_parser.add_argument("--robot", "-r", help="Robot type", default="panda")
-    #argument_parser.add_argument("--steps", "-s", help="Saving intermediate results", action="store_true")
-
 
     args = argument_parser.parse_args()
     model = args.model
@@ -67,7 +63,6 @@ def main():
         # List first level directories
         for d in sorted(os.listdir(data_root)):
             d_path = os.path.join(data_root, d)
-            # print(d)
             if os.path.isdir(d_path):
                 print(f"    {d}/")
                 # List second level directories

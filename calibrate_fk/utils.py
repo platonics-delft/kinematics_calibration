@@ -299,10 +299,6 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
     percentage_improved_distance_train =  [(distances_train[i][0] - distances_train[i][-1])/distances_train[i][0] * 100 for i in range(len(data_folders_train))]
     percentage_improved_variance_train =  [(variances_train[i][0] - variances_train[i][-1])/variances_train[i][0] * 100 for i in range(len(data_folders_train))]
     percentage_improved_mae_train =  [(mae_train[i][0] - mae_train[i][-1])/mae_train[i][0] * 100 for i in range(len(data_folders_train))]
-    percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
-    percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
-    percentage_improved_mae_test =  [(mae_test[i][0] - mae_test[i][-1])/mae_test[i][0] * 100 for i in range(len(data_folders_test))]
-
     print (f"The mean absolute error  went from {np.mean(np.array(mae_train)[:,0]):.2e} to {np.mean(np.array(mae_train)[:,-1]):.2e} on the train data on average")
     # print (f"The consistency went from {np.mean(np.array(variances_train)[:,0]):.2e} to {np.mean(np.array(variances_train)[:,-1]):.2e} on the train data on average")
     # print (f"The distortion went from {np.mean(np.array(distances_train)[:,0]):.2e} to {np.mean(np.array(distances_train)[:,-1]):.2e} on the train data on average")
@@ -310,14 +306,22 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
     # print(f"Percentage of removed error on train set: {np.mean(percentage_improved_variance_train)}")
     # print(f"Percentage of removed distortion error on train set {np.mean(percentage_improved_distance_train)}")
 
-    print (f"The mean absolute error  went from {np.mean(np.array(mae_test)[:,0]):.2e} to {np.mean(np.array(mae_test)[:,-1]):.2e} on the test data on average")
-    # print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.2e} to {np.mean(np.array(variances_test)[:,-1]):.2e} on the test data on average")
-    # print (f"The distortion went from {np.mean(np.array(distances_test)[:,0]):.2e} to {np.mean(np.array(distances_test)[:,-1]):.2e} on the test data on average")
-    
-    print(f"Percentage of removed error on test set: {np.mean(percentage_improved_mae_test):.2f}")
-    # print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
-    # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
 
+    if distances_test:
+        percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
+        percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
+        percentage_improved_mae_test =  [(mae_test[i][0] - mae_test[i][-1])/mae_test[i][0] * 100 for i in range(len(data_folders_test))]
+
+        
+        print (f"The mean absolute error  went from {np.mean(np.array(mae_test)[:,0]):.2e} to {np.mean(np.array(mae_test)[:,-1]):.2e} on the test data on average")
+        # print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.2e} to {np.mean(np.array(variances_test)[:,-1]):.2e} on the test data on average")
+        # print (f"The distortion went from {np.mean(np.array(distances_test)[:,0]):.2e} to {np.mean(np.array(distances_test)[:,-1]):.2e} on the test data on average")
+        
+        print(f"Percentage of removed error on test set: {np.mean(percentage_improved_mae_test):.2f}")
+        # print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
+        # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
+    else:
+        print("No test data provided")
 def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False, comparison_test=False) -> None:
     if latex == True:
         plt.rcParams.update({
@@ -399,7 +403,7 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
         if comparison_test:
             ax.plot(steps, distances, label=key_training[i], linewidth=3)
         else:  
-        ax.plot(steps, distances, color='blue', linewidth=3)
+            ax.plot(steps, distances, color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
         # ax.plot(steps, distances, label=key_test[i], linestyle='--', linewidth=3,alpha=0.8)

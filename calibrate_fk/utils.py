@@ -11,19 +11,19 @@ from yourdfpy import URDF
 
 from io import BytesIO
 
+def read_data(folder: str, number_samples: Optional[int] = None) -> None:
+    # create an empty dictionary to store the data
+    data = {} 
+    for folder_ith in folder:
+        robot_name = os.path.basename(folder_ith)
+        data[robot_name] = read_each(folder_ith)
+        if number_samples is not None:
+            for i in range(len(data[robot_name])):
+                data[robot_name][i] = data[robot_name][i][np.random.choice(data[robot_name][i].shape[0], number_samples, replace=False)]
+    return data
+def read_each(folder: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
 
-OFFSET_DISTANCE = 0.05
-
-def read_data(folder: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
-    if not folder:
-        default_data_directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../ros_ws")
-        print("Select the folder containing the recorded data.")
-        recording_folder = filedialog.askdirectory(
-            title="Select a data folder.",
-            initialdir=default_data_directory,
-        )
-    else:
-        recording_folder = folder
+    recording_folder = folder
     if not recording_folder or not os.path.exists(recording_folder):
         raise FileNotFoundError(f"Recording folder {recording_folder} not found.")
     file_path_1 = os.path.join(recording_folder, "hole_0.csv")
@@ -105,48 +105,49 @@ def overlay_images_2(images: list, output_path: str):
 
 def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, offset_distance: float=0.05) -> dict:
 
-    data_hole_0, data_hole_1 = read_data(data_folder)
+    data = read_data(data_folder)
+    kpis = {}
+    for tool_position, recorded_joints in data.items():
+        fks_1 = np.zeros((len(recorded_joints[0]), 3))
+        fks_2 = np.zeros((len(recorded_joints[1]), 3))
+        for i, joint_angles in enumerate(recorded_joints[0]):
+            joints= np.zeros(robot_model.num_actuated_joints)   
+            joints[:len(joint_angles)] = joint_angles
+            robot_model.update_cfg(joints)
+            fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
+            fks_1[i] = np.array(fk[:3, 3]).flatten()
+        for i, joint_angles in enumerate(recorded_joints[1]):
+            joints= np.zeros(robot_model.num_actuated_joints)
+            joints[:len(joint_angles)] = joint_angles
+            robot_model.update_cfg(joints)
+            fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
+            fks_2[i] = np.array(fk[:3, 3]).flatten()
 
-
-    fks_1 = np.zeros((len(data_hole_0), 3))
-    fks_2 = np.zeros((len(data_hole_1), 3))
-    for i, joint_angles in enumerate(data_hole_0):
-        joints= np.zeros(robot_model.num_actuated_joints)   
-        joints[:len(joint_angles)] = joint_angles
-        robot_model.update_cfg(joints)
-        fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
-        fks_1[i] = np.array(fk[:3, 3]).flatten()
-    for i, joint_angles in enumerate(data_hole_1):
-        joints= np.zeros(robot_model.num_actuated_joints)
-        joints[:len(joint_angles)] = joint_angles
-        robot_model.update_cfg(joints)
-        fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
-        fks_2[i] = np.array(fk[:3, 3]).flatten()
-
-    fk_mean_1 = np.round(np.mean(fks_1, axis=0), decimals=10)
-    fk_variance_1 = np.round(np.var(fks_1, axis=0), decimals=10)
-    fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=10)
-    fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=10)
-    distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance, decimals=10)
-    consistency = np.round(np.sqrt(np.sum(fk_variance_1 + fk_variance_2)), decimals=10)
-    if verbose:
-        print(f"Mean_1: {fk_mean_1}")
-        print(f"Variance_1: {fk_variance_1}")
-        print(f"Mean_2: {fk_mean_2}")
-        print(f"Variance_2: {fk_variance_2}")
-        print(f"Consistency: {consistency}")
-        print(f"Distortion: {distance_error}")
-        print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
-    kpis = {
-        "mean_1": fk_mean_1.tolist(),
-        "var_1": fk_variance_1.tolist(),
-        "mean_2": fk_mean_2.tolist(),
-        "var_2": fk_variance_2.tolist(),
-        "distance": float(distance_error),
-        "height": float(fk_mean_1[2] - fk_mean_2[2]),
-        "fks_1": fks_1.tolist(),
-        "fks_2": fks_2.tolist(),
-    }
+        fk_mean_1 = np.round(np.mean(fks_1, axis=0), decimals=10)
+        fk_variance_1 = np.round(np.var(fks_1, axis=0), decimals=10)
+        fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=10)
+        fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=10)
+        distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance, decimals=10)
+        consistency = np.round(np.sqrt(np.sum(fk_variance_1 + fk_variance_2)), decimals=10)
+        if verbose:
+            print(f"Tool position: {tool_position}")
+            print(f"Mean_1: {fk_mean_1}")
+            print(f"Variance_1: {fk_variance_1}")
+            print(f"Mean_2: {fk_mean_2}")
+            print(f"Variance_2: {fk_variance_2}")
+            print(f"Consistency: {consistency}")
+            print(f"Distortion: {distance_error}")
+            print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
+        kpis[tool_position]={
+            "mean_1": fk_mean_1.tolist(),
+            "var_1": fk_variance_1.tolist(),
+            "mean_2": fk_mean_2.tolist(),
+            "var_2": fk_variance_2.tolist(),
+            "distance": float(distance_error),
+            "height": float(fk_mean_1[2] - fk_mean_2[2]),
+            "fks_1": fks_1.tolist(),
+            "fks_2": fks_2.tolist(),
+        }
     return kpis
 
 def plot_fks_iterations(points_list: list) -> None:
@@ -198,109 +199,116 @@ def set_axes_equal(ax) -> np.ndarray:
     ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
     return limits
 
-def compute_statistics(model: URDF, data_folder: str, offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
+def compute_statistics(model: URDF, data_folder: List[str], offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
     # print(f"Data folder {data_folder}")
-    data_hole_0, data_hole_1 = read_data(data_folder)
+    data = read_data(data_folder)
+    statistics = {}
+    for tool_position, recorded_joints in data.items():
+        data_hole_0 = recorded_joints[0]
+        data_hole_1 = recorded_joints[1]
+        fks_1 = np.zeros((len(data_hole_0), 3))
+        fks_2 = np.zeros((len(data_hole_1), 3))
+        for i, joint_angles in enumerate(data_hole_0):
+            joint= np.zeros(model.num_actuated_joints)
+            joint[:len(joint_angles)] = joint_angles
+            model.update_cfg(joint)
+            fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+            fks_1[i] = np.array(fk[:3, 3]).flatten()
+        for i, joint_angles in enumerate(data_hole_1):
+            joint= np.zeros(model.num_actuated_joints)
+            joint[:len(joint_angles)] = joint_angles
+            model.update_cfg(joint)
+            fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+            fks_2[i] = np.array(fk[:3, 3]).flatten()
 
-    fks_1 = np.zeros((len(data_hole_0), 3))
-    fks_2 = np.zeros((len(data_hole_1), 3))
-    for i, joint_angles in enumerate(data_hole_0):
-        joint= np.zeros(model.num_actuated_joints)
-        joint[:len(joint_angles)] = joint_angles
-        model.update_cfg(joint)
-        fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
-        fks_1[i] = np.array(fk[:3, 3]).flatten()
-    for i, joint_angles in enumerate(data_hole_1):
-        joint= np.zeros(model.num_actuated_joints)
-        joint[:len(joint_angles)] = joint_angles
-        model.update_cfg(joint)
-        fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
-        fks_2[i] = np.array(fk[:3, 3]).flatten()
 
-
-    fk_mean_1 = np.mean(fks_1, axis=0)
-    N_1 = len(fks_1)
-    fk_mean_2 = np.mean(fks_2, axis=0)
-    N_2 = len(fks_2)
-    fk_variance_1 = np.sum(np.var(fks_1, axis=0))
-    fk_variance_2 = np.sum(np.var(fks_2, axis=0))
-    average_z_1 = np.mean(fks_1[:, 2])
-    average_z_2 = np.mean(fks_2[:, 2])
-    distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
-    # breakpoint()    
-    # average_absolute_error 
-    fks_1_average = np.mean(np.linalg.norm(np.abs(fks_1 - fk_mean_1), axis=1))  
-    fks_2_average = np.mean(np.linalg.norm(np.abs(fks_2 - fk_mean_2), axis=1))
-    weighted_average = (N_1 * fks_1_average + N_2 * fks_2_average)/(N_1 + N_2)
-    std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2) # this is not the actual error 
-    mean_squared_error = (fk_variance_1  * N_1 + fk_variance_2 * N_2)/(N_1+N_2)
-    std_dev_fk = np.sqrt(mean_squared_error) 
-    average_z = np.linalg.norm(average_z_1 - average_z_2)
-    statistics = {
-        "mean_1": fk_mean_1,
-        "std_dev_1": np.sqrt(fk_variance_1),
-        "mean_2": fk_mean_2,
-        "std_dev_2": np.sqrt(fk_variance_2),
-        "distance_error": float(distance_error),
-        "height_error": average_z,
-        "fks_1": fks_1,
-        "fks_2": fks_2,
-        "mean_absolute_error": weighted_average,
-        "std_dev_fk": std_dev_fk,
-    }
+        fk_mean_1 = np.mean(fks_1, axis=0)
+        N_1 = len(fks_1)
+        fk_mean_2 = np.mean(fks_2, axis=0)
+        N_2 = len(fks_2)
+        fk_variance_1 = np.sum(np.var(fks_1, axis=0))
+        fk_variance_2 = np.sum(np.var(fks_2, axis=0))
+        average_z_1 = np.mean(fks_1[:, 2])
+        average_z_2 = np.mean(fks_2[:, 2])
+        distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
+        # breakpoint()    
+        # average_absolute_error 
+        fks_1_average = np.mean(np.linalg.norm(np.abs(fks_1 - fk_mean_1), axis=1))  
+        fks_2_average = np.mean(np.linalg.norm(np.abs(fks_2 - fk_mean_2), axis=1))
+        weighted_average = (N_1 * fks_1_average + N_2 * fks_2_average)/(N_1 + N_2)
+        std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2) # this is not the actual error 
+        mean_squared_error = (fk_variance_1  * N_1 + fk_variance_2 * N_2)/(N_1+N_2)
+        std_dev_fk = np.sqrt(mean_squared_error) 
+        average_z = np.linalg.norm(average_z_1 - average_z_2)
+        statistics[tool_position] = {
+            "mean_1": fk_mean_1,
+            "std_dev_1": np.sqrt(fk_variance_1),
+            "mean_2": fk_mean_2,
+            "std_dev_2": np.sqrt(fk_variance_2),
+            "distance_error": float(distance_error),
+            "height_error": average_z,
+            "fks_1": fks_1,
+            "fks_2": fks_2,
+            "mean_absolute_error": weighted_average,
+            "std_dev_fk": std_dev_fk,
+        }
     return statistics
 
 
-def compute_improved_performance(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, latex=False) -> None:
+def compute_improved_performance(model_folder: str, data_folders_train: List[str], data_folders_test: List[str], offset_distance, latex=False) -> None:
 
     kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
     nb_steps = kpis["nb_steps"]
 
     steps = list(range(nb_steps))
     steps = [0, nb_steps ]
-    distances_train = []
+    distances_train = [[] for _ in data_folders_train]
     distances_test = [[] for _ in data_folders_test]
 
-    variances_train = []
+    variances_train =  [[] for _ in data_folders_train]
     variances_test = [[] for _ in data_folders_test]
 
-    mae_train = []
+    mae_train = [[] for _ in data_folders_train]
     mae_test = [[] for _ in data_folders_test]
     print(f"Offset distance: {offset_distance}")
 
     for step in steps:
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
-        statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
-        distance_error = statistics["distance_error"]
-        std_dev = statistics["std_dev_fk"]
-        mae=statistics["mean_absolute_error"]
-        distances_train.append(distance_error)
-        variances_train.append(std_dev)
-        mae_train.append(mae)
-        for i, data_folder_test in enumerate(data_folders_test):
-            statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
-            distance_error = statistics["distance_error"]
-            std_dev = statistics["std_dev_fk"]
-            mae=statistics["mean_absolute_error"]
+        statistics_train = compute_statistics(model_step, data_folders_train, offset_distance=offset_distance)
+        for i, (key, value) in enumerate(statistics_train.items()):
+            distance_error = value["distance_error"]
+            mae = value["mean_absolute_error"]
+            std_dev = value["std_dev_fk"]
+            distances_train[i].append(distance_error)
+            variances_train[i].append(std_dev)
+            mae_train[i].append(mae)
+        key_train = list(value.keys())
 
+        statistics_test = compute_statistics(model_step, data_folders_test, offset_distance=offset_distance)
+
+        for i, (key, value) in enumerate(statistics_test.items()):
+            distance_error = value["distance_error"]
+            mae = value["mean_absolute_error"]
+            std_dev = value["std_dev_fk"]
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
             mae_test[i].append(mae)
-    
-    percentage_improved_distance_train= (distances_train[0] - distances_train[-1])/distances_train[0] * 100
-    percentage_improved_variance_train= (variances_train[0] - variances_train[-1])/variances_train[0] * 100
-    percentage_improved_mae_train = (mae_train[0] - mae_train[-1])/mae_train[0] * 100
+        key_test = list(value.keys())
+    # breakpoint()
+    percentage_improved_distance_train =  [(distances_train[i][0] - distances_train[i][-1])/distances_train[i][0] * 100 for i in range(len(data_folders_train))]
+    percentage_improved_variance_train =  [(variances_train[i][0] - variances_train[i][-1])/variances_train[i][0] * 100 for i in range(len(data_folders_train))]
+    percentage_improved_mae_train =  [(mae_train[i][0] - mae_train[i][-1])/mae_train[i][0] * 100 for i in range(len(data_folders_train))]
     percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
     percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
     percentage_improved_mae_test =  [(mae_test[i][0] - mae_test[i][-1])/mae_test[i][0] * 100 for i in range(len(data_folders_test))]
-    print (f"The mean absolute error went from {mae_train[0]:.2e} to {mae_train[-1]:.2e} on the training data")
-    # print (f"The consistency went from {variances_train[0]:.2e} to {variances_train[-1]:.2e} on the training data")
-    # print (f"The distortion went from {distances_train[0]:.2e} to {distances_train[-1]:.2e} on the training data")
 
-    print(f"Percentage of removed error on training set: {percentage_improved_mae_train:.2f}")
-    # print(f"Percentage of removed error on training set: {percentage_improved_variance_train}")
-    # print(f"Percentage of removed distortion error on training set: {percentage_improved_distance_train}")
+    print (f"The mean absolute error  went from {np.mean(np.array(mae_train)[:,0]):.2e} to {np.mean(np.array(mae_train)[:,-1]):.2e} on the train data on average")
+    # print (f"The consistency went from {np.mean(np.array(variances_train)[:,0]):.2e} to {np.mean(np.array(variances_train)[:,-1]):.2e} on the train data on average")
+    # print (f"The distortion went from {np.mean(np.array(distances_train)[:,0]):.2e} to {np.mean(np.array(distances_train)[:,-1]):.2e} on the train data on average")
+    print(f"Percentage of removed error on train set: {np.mean(percentage_improved_mae_train):.2f}")
+    # print(f"Percentage of removed error on train set: {np.mean(percentage_improved_variance_train)}")
+    # print(f"Percentage of removed distortion error on train set {np.mean(percentage_improved_distance_train)}")
 
     print (f"The mean absolute error  went from {np.mean(np.array(mae_test)[:,0]):.2e} to {np.mean(np.array(mae_test)[:,-1]):.2e} on the test data on average")
     # print (f"The consistency went from {np.mean(np.array(variances_test)[:,0]):.2e} to {np.mean(np.array(variances_test)[:,-1]):.2e} on the test data on average")
@@ -310,7 +318,7 @@ def compute_improved_performance(model_folder: str, data_folder_train: str, data
     # print(f"Percentage of removed error on test set: {np.mean(percentage_improved_variance_test)}")
     # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
 
-def plot_training_curves(model_folder: str, data_folder_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False) -> None:
+def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False, comparison_test=False) -> None:
     if latex == True:
         plt.rcParams.update({
         "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
@@ -320,59 +328,86 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
         })
     kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
     nb_steps = kpis["nb_steps"]
-    train_name = data_folder_train.split("/")[-1]
-
     steps = list(range(nb_steps+1))
-    distances_train = []
+    distances_train = [[] for _ in data_folders_train]
     distances_test = [[] for _ in data_folders_test]
-    variances_train = []
+    variances_train = [[] for _ in data_folders_train]
     variances_test = [[] for _ in data_folders_test]
-    average_z_train = []
-    average_z_test = [[] for _ in data_folders_test]
     print(f"Offset distance: {offset_distance}")
-
-    std_devs_z = []
 
     for step in steps:
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
-        statistics = compute_statistics(model_step, data_folder_train, offset_distance=offset_distance)
-        distance_error = statistics["distance_error"]
-        std_dev = statistics["std_dev_fk"]
-        average_z = statistics["height_error"]
-        average_z_train.append(average_z)
-        distances_train.append(distance_error)
-        variances_train.append(std_dev)
-        average_z_all = []
-        for i, data_folder_test in enumerate(data_folders_test):
-            statistics = compute_statistics(model_step, data_folder_test, offset_distance=offset_distance)
-            distance_error = statistics["distance_error"]
-            std_dev = statistics["std_dev_fk"]
-            average_z = statistics["height_error"]
+        statistics = compute_statistics(model_step, data_folders_train, offset_distance=offset_distance)
+        for i, (key, value) in enumerate(statistics.items()):
+            distance_error = value["distance_error"]
+            std_dev = value["std_dev_fk"]
+            distances_train[i].append(distance_error)
+            variances_train[i].append(std_dev)
+        key_training = list(statistics.keys())
+
+        statistics = compute_statistics(model_step, data_folders_test, offset_distance=offset_distance)
+        for i, (key, value) in enumerate(statistics.items()):
+            distance_error = value["distance_error"]
+            std_dev = value["std_dev_fk"]
             distances_test[i].append(distance_error)
             variances_test[i].append(std_dev)
-            average_z_all.append(average_z)
-        std_dev_z = np.std(np.array(average_z_all))
-        std_devs_z.append(std_dev_z)
-
-
-
+        key_test = list(statistics.keys())
+    # breakpoint()
+    fontsize=20
+    # CONSISTENCY
     fig, ax = plt.subplots(1, 1)
+
+    ax.set_yscale("log")
+    for i, variances in enumerate(variances_train):
+        if comparison_test:
+            ax.plot(steps, variances, label=key_training[i], linewidth=3)
+        else:
+            ax.plot(steps, variances, color= 'blue', linewidth=3)
+    for i, variances in enumerate(variances_test):
+        if comparison_test:
+            ax.plot(steps, variances, label=key_test[i],  linestyle='--', linewidth=3, alpha=0.8)
+        else:
+            ax.plot(steps, variances, color= 'orange', linewidth=3, alpha=0.8)
+
+    ax.legend(fontsize=fontsize)
+    ax.set_xlabel("Step", fontsize=fontsize)
+    ax.set_ylabel("$\sigma$ [m]", fontsize=fontsize)
+    ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
+
+    ax.tick_params(axis='both', which='major', labelsize=fontsize)
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.xaxis.set_major_locator(plt.MultipleLocator(1))
+    ax.set_ylim(1e-4/2, 3e-2)
+
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    if latex:
+        plt.savefig(f"{model_folder}/consistency.pgf")
+    else:
+        plt.savefig(f"{model_folder}/consistency.png")
+
+
+
+    # DISTORTION
+        fig, ax = plt.subplots(1, 1)
     # make log scale
     ax.set_yscale("log")
-    ax.plot(steps, distances_train, label="train", color='blue', linewidth=3)
+    for i, distances in enumerate(distances_train):
+        if comparison_test:
+            ax.plot(steps, distances, label=key_training[i], linewidth=3)
+        else:  
+        ax.plot(steps, distances, color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
-        #ax.plot(steps, distances, label=f"{name.replace('_', '-')}", alpha=0.5)
-        if i == 0:
-            ax.plot(steps, distances, label="validation", color='orange', linewidth=3,alpha=0.8)
-        else:
-            ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
+        # ax.plot(steps, distances, label=key_test[i], linestyle='--', linewidth=3,alpha=0.8)
+        ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
     #plot dashed horixzaon line at the repeatibility value
     print(f"Repeatability: {repeatability}")
     ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
     # set legend
-    fontsize=20
     ax.legend(fontsize=fontsize)
     ax.set_xlabel("Step", fontsize=fontsize)
     ax.set_ylabel("$\epsilon$ [m]", fontsize=fontsize)
@@ -398,34 +433,6 @@ def plot_training_curves(model_folder: str, data_folder_train: str, data_folders
     else:
         plt.savefig(f"{model_folder}/distortion.png")
 
-    fig, ax = plt.subplots(1, 1)
-
-    ax.set_yscale("log")
-    ax.plot(steps, variances_train, label="train", color='blue', linewidth=3)
-    for i, variances in enumerate(variances_test):
-        if i == 0:
-            ax.plot(steps, variances, label="validation", color='orange', linewidth=3, alpha=0.8)
-        else:
-            ax.plot(steps, variances, color='orange', linewidth=3, alpha=0.8)
-
-    ax.legend(fontsize=fontsize)
-    ax.set_xlabel("Step", fontsize=fontsize)
-    ax.set_ylabel("$\sigma$ [m]", fontsize=fontsize)
-    ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
-
-    ax.tick_params(axis='both', which='major', labelsize=fontsize)
-    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.xaxis.set_major_locator(plt.MultipleLocator(1))
-    ax.set_ylim(1e-4/2, 3e-2)
-
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-
-    plt.tight_layout()
-    if latex:
-        plt.savefig(f"{model_folder}/consistency.pgf")
-    else:
-        plt.savefig(f"{model_folder}/consistency.png")
 
     plt.show()
 

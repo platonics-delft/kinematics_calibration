@@ -218,27 +218,12 @@ class ParameterOptimizer():
     def read_data(self, folder: str, number_samples: Optional[int] = None) -> None:
         self._data_folder = folder
         # create an empty dictionary to store the data
-        self.data = {} 
-        # for each of the subfolders in the folder, read the data
-        self.data[folder] = read_data(folder=os.path.join(folder, folder))
-        if number_samples is not None:
-            for i in range(len(self.data[folder])):
-                self.data[folder][i] = self.data[folder][i][np.random.choice(self.data[folder][i].shape[0], number_samples, replace=False)]
-    def read_multiple_data(self, folder: str, number_samples: Optional[int] = None) -> None:
-        self._data_folder = folder
-        # create an empty dictionary to store the data
-        self.data = {} 
-        # for each of the subfolders in the folder, read the data
-        for subfolder in os.listdir(folder):
-            self.data[subfolder] = read_data(folder=os.path.join(folder, subfolder))
-            if number_samples is not None:
-                for i in range(len(self.data[subfolder])):
-                    self.data[subfolder][i] = self.data[subfolder][i][np.random.choice(self.data[subfolder][i].shape[0], number_samples, replace=False)]
+        self.data = read_data(folder=folder, number_samples=number_samples)
 
     def optimize(self, saving_steps: bool = False):
         self.create_fk_expression()
         self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
-        # for each element in the dictionary 
+        # for each element in read_multiplethe dictionary 
         objective = 0
         for sockets in self.data.values():
             fks_1 = []

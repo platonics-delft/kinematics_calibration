@@ -5,13 +5,13 @@ def main():
 
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--model", "-m", help="Name of the urdf stored in the urdf folder.")
-    argument_parser.add_argument("--data", "-t", help="Data that you want to train the calibration on. Stored in data folder.")
+    argument_parser.add_argument("--data", "-t", type=str, nargs='+', help="Data that you want to train the calibration on. Stored in data folder.")
 
 
     args = argument_parser.parse_args()
     model = args.model
     data = args.data
-    robot_name = os.path.dirname(data)
+    robot_name = os.path.dirname(data[0])
 
     script_directory = os.path.abspath(__file__)
     parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
@@ -26,26 +26,32 @@ def main():
             print(filename)
         sys.exit(1)
 
-    data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
-
-    if not os.path.exists(data_path):
-        print(f"Data folder {data} does not exist in the data folder.")
-        # Check if the data folder exists and the urdf path exists, otherwise exit
-        data_root = os.path.abspath(os.path.join(parent_directory, 'data', model))
-        print("Suggested data folders are: ")
-        # List first level directories
-        for d in sorted(os.listdir(data_root)):
-            d_path = os.path.join(data_root, d)
-            if os.path.isdir(d_path):
-                print(f"{model}/{d}")
-                # List second level directories
-        sys.exit(1)
-
+    data_path = [None] * len(data)
+    for i, d in enumerate(data):
+        data_path[i] = os.path.abspath(os.path.join(parent_directory, 'data', d))
+    for data_path_ith in data_path:
+        if not os.path.exists(data_path_ith):
+            print(f"Data folder {data} does not exist.")
+            # Check if the data folder exists and the urdf path exists, otherwise exit
+            data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+            print("Available data folders are: ")
+            # List first level directories
+            for d in sorted(os.listdir(data_root)):
+                d_path = os.path.join(data_root, d)
+                if os.path.isdir(d_path):
+                    print(f"    {d}/")
+                    # List second level directories
+                    for subd in os.listdir(d_path):
+                        subd_path = os.path.join(d_path, subd)
+                        if os.path.isdir(subd_path):
+                            print(f"        {subd}")
+            sys.exit(1)
 
     # run the script run_optimizer.py with the arguments model and data
-    os.system(f"python3 run_optimizer.py --model {model} --data {data}")
+    data_args = ' '.join(data)
+    os.system(f"python3 run_optimizer.py --model {model} --data {data_args}")
     os.system(f"python3 generate_learning_curve.py --model {robot_name} ")
-    os.system(f"python3 generate_overlay.py --model {robot_name} --data {data} ")
+    os.system(f"python3 generate_overlay.py --model {robot_name} --data {data_args} ")
     os.system(f"python3 compute_improved_performance.py --model {robot_name} ")
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ def main():
 
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--model", "-m", help="Name of the urdf stored in the urdf folder.")
-    argument_parser.add_argument("--data", "-t", help="Data that you want to train the calibration on. Stored in data folder.")
+    argument_parser.add_argument("--data", "-t", type=str, nargs='+', help="Data that you want to train the calibration on. Stored in data folder.")
     argument_parser.add_argument("--offset-distance", "-d", help="Distance to offset the end effector", default=0.05)
     argument_parser.add_argument("--regularizer", "-reg", help="Regularizer for the optimization", default=1e-4)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
@@ -22,12 +22,11 @@ def main():
     args = argument_parser.parse_args()
     model = args.model
     data = args.data
-    robot_name = os.path.dirname(data)
+    robot_name = os.path.dirname(data[0])
     variance_noise = float(args.variance_noise)
     end_effector = args.end_effector
     root_link = args.root_link
 
-    # saving_steps = args.steps
     saving_steps = True
     number_samples = args.number_samples
     offset_distance = float(args.offset_distance)
@@ -42,7 +41,8 @@ def main():
     
     
     output_path = os.path.abspath(os.path.join(parent_directory, 'calibrated_urdf', robot_name))
-    data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
+
+    # data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', model + ".urdf"))
 
     if not os.path.exists(urdf_path):
@@ -55,29 +55,33 @@ def main():
             print(filename)
         sys.exit(1)
 
-    if not os.path.exists(data_path):
-        print(f"Data folder {data} does not exist.")
-        # Check if the data folder exists and the urdf path exists, otherwise exit
-        data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
-        print("Available data folders are: ")
-        # List first level directories
-        for d in sorted(os.listdir(data_root)):
-            d_path = os.path.join(data_root, d)
-            if os.path.isdir(d_path):
-                print(f"    {d}/")
-                # List second level directories
-                for subd in os.listdir(d_path):
-                    subd_path = os.path.join(d_path, subd)
-                    if os.path.isdir(subd_path):
-                        print(f"        {subd}")
-        sys.exit(1)
+    data_path = [None] * len(data)
+    for i, d in enumerate(data):
+        data_path[i] = os.path.abspath(os.path.join(parent_directory, 'data', d))
+    for data_path_ith in data_path:
+        if not os.path.exists(data_path_ith):
+            print(f"Data folder {data_path_ith} does not exist.")
+            # Check if the data folder exists and the urdf path exists, otherwise exit
+            data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+            print("Available data folders are: ")
+            # List first level directories
+            for d in sorted(os.listdir(data_root)):
+                d_path = os.path.join(data_root, d)
+                if os.path.isdir(d_path):
+                    print(f"    {d}/")
+                    # List second level directories
+                    for subd in os.listdir(d_path):
+                        subd_path = os.path.join(d_path, subd)
+                        if os.path.isdir(subd_path):
+                            print(f"        {subd}")
+            sys.exit(1)
 
 
     #Does the output folder already exist?
-    print("Output path: ", output_path)
-    print(os.path.exists(output_path))  
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
+    # print("Output path: ", output_path)
+    # print(os.path.exists(output_path))  
+    # if os.path.exists(output_path):
+    #     shutil.rmtree(output_path)
 
     if os.path.exists(output_path):
         print(f"Output folder {output_path} already exists. Please delete it or specify a different folder.")
@@ -103,7 +107,11 @@ def main():
     optimizer.set_offset_distance(offset_distance)
     optimizer.set_regulizer_weight(regularizer)
     optimizer.load_model(urdf_path)
-    optimizer.read_data(data_path, number_samples=number_samples)
+    # check if datapath has folder inside or only files
+    # breakpoint()
+
+    optimizer.read_data(data_path, number_samples=number_samples)   
+    # breakpoint() 
     optimizer.create_symbolic_fk(root_link, end_effector)
 
     parameters = {

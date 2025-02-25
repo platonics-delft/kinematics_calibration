@@ -11,7 +11,7 @@ from PIL import Image
 import random
 
 from calibrate_fk.utils import (overlay_images,
-                                read_data)
+                                read_data, check_model_path, check_data_path)
 
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("--model", "-m", help="calibrated robot model. Saved in the calibrated_urdf folder. ")
@@ -30,18 +30,7 @@ model_folder = parent_directory + "/calibrated_urdf/" + model
 camera_setting_file = args.camera_settings
 generate_images = not(args.no_generate_images)
 
-if not os.path.exists(model_folder):
-    print(f"model {model} does not exist in calibrated_urdf. Did you already run the optimizer?")
-    # Check if the data folder exists and the urdf path exists, otherwise exit
-    data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
-    print("Available calibrated models that can be evaluated are: ")
-    # List first level directories
-    for d in sorted(os.listdir(data_root)):
-        if d == "README.md":
-            continue
-        print(f"    {d}")
-    sys.exit(1)
-
+check_model_path(model_folder)
 
 model_config = yaml.load(open(model_folder+ "/config.yaml", 'r'), Loader=yaml.FullLoader)
 urdf_name = model_config["urdf"]
@@ -51,23 +40,7 @@ urdf_file = model_folder + "/" + urdf_name + ".urdf"
 data_path = [None] * len(data)
 for i, d in enumerate(data):
     data_path[i] = os.path.abspath(os.path.join(parent_directory, 'data', d))
-for data_path_ith in data_path:
-    if not os.path.exists(data_path_ith):
-        print(f"Data folder {data_path_ith} does not exist.")
-        # Check if the data folder exists and the urdf path exists, otherwise exit
-        data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
-        print("Available data folders are: ")
-        # List first level directories
-        for d in sorted(os.listdir(data_root)):
-            d_path = os.path.join(data_root, d)
-            if os.path.isdir(d_path):
-                print(f"    {d}/")
-                # List second level directories
-                for subd in os.listdir(d_path):
-                    subd_path = os.path.join(d_path, subd)
-                    if os.path.isdir(subd_path):
-                        print(f"        {subd}")
-        sys.exit(1)
+check_data_path(data_path)
 
 robot = yourdfpy.URDF.load(urdf_file)
 dof = len(robot.actuated_joints)
@@ -89,15 +62,11 @@ if os.path.exists(camera_setting_file):
 
 
 if generate_images:
-    # breakpoint()
     data= read_data(data_path)
 
     # iterated over the keys of data 
     for keys, joints in data.items():
         print(keys)
-        # breakpoint()
-        ## extract the last part of the path 
-        # data_folder_name = data.split('/')[-1]
 
         os.makedirs(f"{model_folder}/images/{keys}", exist_ok=True)
 

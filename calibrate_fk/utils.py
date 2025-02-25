@@ -10,6 +10,7 @@ from PIL import Image
 from yourdfpy import URDF
 
 from io import BytesIO
+import sys
 
 def read_data(folder: str, number_samples: Optional[int] = None) -> None:
     # create an empty dictionary to store the data
@@ -322,7 +323,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
         # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
     else:
         print("No test data provided")
-def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False, comparison_test=False) -> None:
+def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False, comparison_test=True) -> None:
     if latex == True:
         plt.rcParams.update({
         "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
@@ -406,8 +407,10 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
             ax.plot(steps, distances, color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
-        # ax.plot(steps, distances, label=key_test[i], linestyle='--', linewidth=3,alpha=0.8)
-        ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
+        if comparison_test:
+            ax.plot(steps, distances, label=key_test[i], linestyle='--', linewidth=3,alpha=0.8)
+        else:
+            ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
     #plot dashed horixzaon line at the repeatibility value
     print(f"Repeatability: {repeatability}")
     ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)
@@ -469,3 +472,53 @@ def modify_urdf(urdf_file: str, search_pattern: str, replace_with: str, output_f
         file.write(urdf_content_modified)
 
     print(f"Modified URDF saved to: {output_file}")
+
+def check_urdf_path(urdf_path : str):
+    if not os.path.exists(urdf_path):
+        filename = os.path.splitext(os.path.basename(urdf_path))[0]
+        print(f"URDF file {filename} does not exist.")
+        # show the available model that can be used in from the folder urdf
+        print("Available models are: ")
+        script_directory = os.path.abspath(__file__)
+        parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
+        for file in os.listdir(os.path.abspath(os.path.join(parent_directory, 'urdf'))):
+            filename = os.path.splitext(file)[0]  # Get name without extension
+            print(filename)
+        sys.exit(1)
+def check_data_path(data_path : List[str]):
+    for data_path_ith in data_path:
+        if not os.path.exists(data_path_ith):
+            print(f"Data folder {data_path_ith} does not exist.")
+            script_directory = os.path.abspath(__file__)
+            parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
+            # Check if the data folder exists and the urdf path exists, otherwise exit
+            data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+            print("Available data folders are: ")
+            # List first level directories
+            for d in sorted(os.listdir(data_root)):
+                d_path = os.path.join(data_root, d)
+                if os.path.isdir(d_path):
+                    print(f"    {d}/")
+                    # List second level directories
+                    for subd in os.listdir(d_path):
+                        subd_path = os.path.join(d_path, subd)
+                        if os.path.isdir(subd_path):
+                            print(f"        {subd}")
+            sys.exit(1)
+
+def check_model_path(model_folder: str):
+    if not os.path.exists(model_folder):
+        # read last directory in model_folder
+        model = os.path.basename(model_folder)
+        print(f"model {model} does not exist in calibrated_urdf. Did you already run the optimizer?")
+        # Check if the data folder exists and the urdf path exists, otherwise exit
+        script_directory = os.path.abspath(__file__)
+        parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
+        data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
+        print("Available calibrated models that can be evaluated are: ")
+        # List first level directories
+        for d in sorted(os.listdir(data_root)):
+            if d == "README.md":
+                continue
+            print(f"    {d}")
+        sys.exit(1)

@@ -5,7 +5,7 @@ import shutil
 import sys
 
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
-
+from calibrate_fk.utils import check_urdf_path, check_data_path
 
 def main():
 
@@ -45,43 +45,20 @@ def main():
     # data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', model + ".urdf"))
 
-    if not os.path.exists(urdf_path):
-        filename = os.path.splitext(os.path.basename(urdf_path))[0]
-        print(f"URDF file {filename} does not exist.")
-        # show the available model that can be used in from the folder urdf
-        print("Available models are: ")
-        for file in os.listdir(os.path.abspath(os.path.join(parent_directory, 'urdf'))):
-            filename = os.path.splitext(file)[0]  # Get name without extension
-            print(filename)
-        sys.exit(1)
+    check_urdf_path(urdf_path)
 
     data_path = [None] * len(data)
     for i, d in enumerate(data):
         data_path[i] = os.path.abspath(os.path.join(parent_directory, 'data', d))
-    for data_path_ith in data_path:
-        if not os.path.exists(data_path_ith):
-            print(f"Data folder {data_path_ith} does not exist.")
-            # Check if the data folder exists and the urdf path exists, otherwise exit
-            data_root = os.path.abspath(os.path.join(parent_directory, 'data'))
-            print("Available data folders are: ")
-            # List first level directories
-            for d in sorted(os.listdir(data_root)):
-                d_path = os.path.join(data_root, d)
-                if os.path.isdir(d_path):
-                    print(f"    {d}/")
-                    # List second level directories
-                    for subd in os.listdir(d_path):
-                        subd_path = os.path.join(d_path, subd)
-                        if os.path.isdir(subd_path):
-                            print(f"        {subd}")
-            sys.exit(1)
+    
+    check_data_path(data_path)
 
 
-    #Does the output folder already exist?
-    # print("Output path: ", output_path)
-    # print(os.path.exists(output_path))  
-    # if os.path.exists(output_path):
-    #     shutil.rmtree(output_path)
+    # Does the output folder already exist?
+    print("Output path: ", output_path)
+    print(os.path.exists(output_path))  
+    if os.path.exists(output_path):
+        shutil.rmtree(output_path)
 
     if os.path.exists(output_path):
         print(f"Output folder {output_path} already exists. Please delete it or specify a different folder.")

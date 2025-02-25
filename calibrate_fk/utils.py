@@ -138,14 +138,12 @@ def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, o
             print(f"Variance_2: {fk_variance_2}")
             print(f"Consistency: {consistency}")
             print(f"Distortion: {distance_error}")
-            print(f"Height Error: {fk_mean_1[2] - fk_mean_2[2]}")
         kpis[tool_position]={
             "mean_1": fk_mean_1.tolist(),
             "var_1": fk_variance_1.tolist(),
             "mean_2": fk_mean_2.tolist(),
             "var_2": fk_variance_2.tolist(),
             "distance": float(distance_error),
-            "height": float(fk_mean_1[2] - fk_mean_2[2]),
             "fks_1": fks_1.tolist(),
             "fks_2": fks_2.tolist(),
         }
@@ -201,7 +199,6 @@ def set_axes_equal(ax) -> np.ndarray:
     return limits
 
 def compute_statistics(model: URDF, data_folder: List[str], offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
-    # print(f"Data folder {data_folder}")
     data = read_data(data_folder)
     statistics = {}
     for tool_position, recorded_joints in data.items():
@@ -229,10 +226,7 @@ def compute_statistics(model: URDF, data_folder: List[str], offset_distance: flo
         N_2 = len(fks_2)
         fk_variance_1 = np.sum(np.var(fks_1, axis=0))
         fk_variance_2 = np.sum(np.var(fks_2, axis=0))
-        average_z_1 = np.mean(fks_1[:, 2])
-        average_z_2 = np.mean(fks_2[:, 2])
         distance_error = np.abs(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance)
-        # breakpoint()    
         # average_absolute_error 
         fks_1_average = np.mean(np.linalg.norm(np.abs(fks_1 - fk_mean_1), axis=1))  
         fks_2_average = np.mean(np.linalg.norm(np.abs(fks_2 - fk_mean_2), axis=1))
@@ -240,14 +234,12 @@ def compute_statistics(model: URDF, data_folder: List[str], offset_distance: flo
         std_dev_fk = np.sqrt(fk_variance_1 + fk_variance_2) # this is not the actual error 
         mean_squared_error = (fk_variance_1  * N_1 + fk_variance_2 * N_2)/(N_1+N_2)
         std_dev_fk = np.sqrt(mean_squared_error) 
-        average_z = np.linalg.norm(average_z_1 - average_z_2)
         statistics[tool_position] = {
             "mean_1": fk_mean_1,
             "std_dev_1": np.sqrt(fk_variance_1),
             "mean_2": fk_mean_2,
             "std_dev_2": np.sqrt(fk_variance_2),
             "distance_error": float(distance_error),
-            "height_error": average_z,
             "fks_1": fks_1,
             "fks_2": fks_2,
             "mean_absolute_error": weighted_average,
@@ -276,6 +268,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
     for step in steps:
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
+
         statistics_train = compute_statistics(model_step, data_folders_train, offset_distance=offset_distance)
         for i, (key, value) in enumerate(statistics_train.items()):
             distance_error = value["distance_error"]
@@ -284,7 +277,6 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
             distances_train[i].append(distance_error)
             variances_train[i].append(std_dev)
             mae_train[i].append(mae)
-        key_train = list(value.keys())
 
         statistics_test = compute_statistics(model_step, data_folders_test, offset_distance=offset_distance)
 
@@ -296,7 +288,6 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
             variances_test[i].append(std_dev)
             mae_test[i].append(mae)
         key_test = list(value.keys())
-    # breakpoint()
     percentage_improved_distance_train =  [(distances_train[i][0] - distances_train[i][-1])/distances_train[i][0] * 100 for i in range(len(data_folders_train))]
     percentage_improved_variance_train =  [(variances_train[i][0] - variances_train[i][-1])/variances_train[i][0] * 100 for i in range(len(data_folders_train))]
     percentage_improved_mae_train =  [(mae_train[i][0] - mae_train[i][-1])/mae_train[i][0] * 100 for i in range(len(data_folders_train))]
@@ -308,7 +299,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
     # print(f"Percentage of removed distortion error on train set {np.mean(percentage_improved_distance_train)}")
 
 
-    if distances_test:
+    if distances_test: # if there is test data
         percentage_improved_distance_test =  [(distances_test[i][0] - distances_test[i][-1])/distances_test[i][0] * 100 for i in range(len(data_folders_test))]
         percentage_improved_variance_test =  [(variances_test[i][0] - variances_test[i][-1])/variances_test[i][0] * 100 for i in range(len(data_folders_test))]
         percentage_improved_mae_test =  [(mae_test[i][0] - mae_test[i][-1])/mae_test[i][0] * 100 for i in range(len(data_folders_test))]

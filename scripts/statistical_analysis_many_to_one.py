@@ -5,7 +5,7 @@ import shutil
 import sys
 
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
-from calibrate_fk.utils import check_urdf_path, check_data_path
+from calibrate_fk.utils import check_urdf_path, check_data_path, evaluate_model
 
 def main():
 
@@ -18,7 +18,7 @@ def main():
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
     argument_parser.add_argument("--variance_noise", "-v", help="Variance of the noise injected to the initial robot parameters", default=0.00)
     argument_parser.add_argument("--number-samples", "-n", help="Number of samples to use", default=None)
-
+    
     args = argument_parser.parse_args()
     model = args.model
     data = args.data
@@ -27,7 +27,7 @@ def main():
     end_effector = args.end_effector
     root_link = args.root_link
 
-    saving_steps = True
+    saving_steps = False
     number_samples = args.number_samples
     offset_distance = float(args.offset_distance)
     regularizer = float(args.regularizer)
@@ -35,16 +35,15 @@ def main():
         number_samples = int(number_samples)
 
     script_directory = os.path.abspath(__file__)
-
     # Get the parent directory of the script's directory
     parent_directory = os.path.join(os.path.dirname(script_directory), os.path.pardir)
     
     
     output_path = os.path.abspath(os.path.join(parent_directory, 'calibrated_urdf', robot_name))
+    os.makedirs(f"{output_path}", exist_ok=True)
 
     # data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', model + ".urdf"))
-
     check_urdf_path(urdf_path)
 
     data_path = [None] * len(data)
@@ -53,17 +52,6 @@ def main():
     
     check_data_path(data_path)
 
-
-    # Does the output folder already exist?
-    print("Output path: ", output_path)
-    print(os.path.exists(output_path))  
-    if os.path.exists(output_path):
-        shutil.rmtree(output_path)
-
-    if os.path.exists(output_path):
-        print(f"Output folder {output_path} already exists. Please delete it or specify a different folder.")
-        sys.exit(1)
-    os.makedirs(f"{output_path}", exist_ok=True)
     config = {
             'urdf': model,
             'robot-name': robot_name,
@@ -79,28 +67,28 @@ def main():
     with open(f"{output_path}/config.yaml", "w") as f:
         yaml.dump(config, f)
 
-    print(output_path)
     optimizer = ParameterOptimizer(output_path)
     optimizer.set_offset_distance(offset_distance)
     optimizer.set_regulizer_weight(regularizer)
     optimizer.load_model(urdf_path)
-    # check if datapath has folder inside or only files
-    # breakpoint()
-
-    optimizer.read_data(data_path, number_samples=number_samples)   
-    # breakpoint() 
     optimizer.create_symbolic_fk(root_link, end_effector)
-
+    # check if datapath has folder inside or only file
     parameters = {
             'panda': [f"panda_joint{i}" for i in range(1, 8)] + ['ball_joint'],
             'iiwa14': [f"joint_a{i}" for i in range(1, 8)] + ['ball_joint'],
             'gen3lite': [f"joint_{i}" for i in range(1, 7)] + ['ball_joint'],
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
-    optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model])
-    optimizer.evaluate_fks(verbose=True)
-    optimizer.optimize(saving_steps=saving_steps)
-    optimizer.evaluate_fks(verbose=True)
+    optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model]) 
+    optimizer.read_data(data_path, number_samples=number_samples)   
+    optimizer.optimize(saving_steps=False)
+    # optimizer.evaluate_fks(verbose=False)
+
+    evaluate_model(optimizer._model, optimizer._data_folder)
+
+
+
+
 
 
 if __name__ == "__main__":

@@ -1,11 +1,10 @@
 import argparse
 import os
 import yaml
-import shutil
-import sys
-
+import matplotlib.pyplot as plt
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
 from calibrate_fk.utils import check_urdf_path, check_data_path, evaluate_model
+import matplotlib.colors as mcolors
 
 def main():
 
@@ -41,8 +40,6 @@ def main():
     
     output_path = os.path.abspath(os.path.join(parent_directory, 'calibrated_urdf', robot_name))
     os.makedirs(f"{output_path}", exist_ok=True)
-
-    # data_path = os.path.abspath(os.path.join(parent_directory, 'data', data))
     urdf_path = os.path.abspath(os.path.join(parent_directory, 'urdf', model + ".urdf"))
     check_urdf_path(urdf_path)
 
@@ -80,16 +77,94 @@ def main():
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
     optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model]) 
-    optimizer.read_data(data_path, number_samples=number_samples)   
+    
+    max_mae = 0
+    data_train = []
+    data_test = []  
+    for data_ in data_path:
+        data_train.append([data_])
+        #select the data in data_path that are not in data_path 
+        other_data = [d for d in data_path if d != data_]
+        data_test.append(other_data)
+    #create a list of color, each for each data_train, the list may have a different lenght 
+    
+    # Dictionary of Tableau colors (always in same order)
+    tableau_colors = mcolors.TABLEAU_COLORS
+
+    # Convert to list if needed
+    colors = list(tableau_colors.values())
+    colors = colors[:len(data_train)]
+    plt.figure()
+    for i, data_selected in enumerate(data_train):
+        optimizer.read_data(data_selected, number_samples=number_samples)
+        optimizer.optimize(saving_steps=False)
+        statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
+        stat = []   
+        for values in statistics.values():
+            stat.append(values["mean_absolute_error"]*1000)
+        max_mae =max(max_mae, max(stat))
+        keys = list(statistics.keys())
+        key_train = [os.path.basename(train) for train in data_selected]
+        plt.subplot(1, 2*len(data_train)+1, i+1)
+        # set y axis scale 
+        
+        hatch_styles = ['' if key not in key_train else '//' for key in keys]
+        bars = plt.bar(keys, stat, color=colors)
+        for bar, hatch in zip(bars, hatch_styles):
+            bar.set_hatch(hatch)
+        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+    for i, data_selected in enumerate(data_test):
+        optimizer.read_data(data_selected, number_samples=number_samples)
+        optimizer.optimize(saving_steps=False)
+        statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
+        stat = []   
+        for values in statistics.values():
+            stat.append(values["mean_absolute_error"]*1000)
+        max_mae = max(max_mae,max(stat))
+        keys = list(statistics.keys())
+        key_train = [os.path.basename(train) for train in data_selected]
+        plt.subplot(1, 2* len(data_test) +1 , len(data_train)+  i+1)
+        hatch_styles = ['' if key not in key_train else '//' for key in keys]
+        bars = plt.bar(keys, stat, color=colors)
+        for bar, hatch in zip(bars, hatch_styles):
+            bar.set_hatch(hatch)
+        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+    plt.subplot(1, 2* len(data_test) +1 , 2*len(data_train)+1)
+    optimizer.read_data(data_path, number_samples=number_samples)
     optimizer.optimize(saving_steps=False)
-    # optimizer.evaluate_fks(verbose=False)
+    statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
+    stat = []   
+    for values in statistics.values():
+        stat.append(values["mean_absolute_error"]*1000)
+    max_mae = max(max_mae,max(stat))
+    keys = list(statistics.keys())
+    key_train = [os.path.basename(train) for train in data_path]
+    hatch_styles = ['' if key not in key_train else '//' for key in keys]
+    bars = plt.bar(keys, stat, color=colors)
+    plt.legend(bars, keys, loc='upper right')
+    
+    for bar, hatch in zip(bars, hatch_styles):
+        bar.set_hatch(hatch)
+        # set legent of that bar 
+    #do not print anything on the x axis
+    plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
+    #show the plot to be wide
+    #set plot size
+    plt.gcf().set_size_inches(30, 5)
+    for i in range(1, 2 * len(data_train) + 2):
+        plt.subplot(1, 2 * len(data_train) + 1, i)
+        plt.ylim(0, max_mae * 1.1)
+        # keep y scale number only on the first subplot 
+        if i != 1:
+            plt.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
+        else:
+            plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
+            plt.yticks(fontsize=20)
 
-    evaluate_model(optimizer._model, optimizer._data_folder)
-
-
-
-
-
-
+    print(f"Max MAE: {max_mae}")
+    plt.gcf().set_size_inches(30, 5)
+    plt.gcf().set_dpi(100)
+    plt.savefig(f"{output_path}/bar_plot.png")
+    plt.show()  
 if __name__ == "__main__":
     main()

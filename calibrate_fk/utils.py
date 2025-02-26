@@ -104,51 +104,6 @@ def overlay_images_2(images: list, output_path: str):
     overlay.save(output_path)
     overlay.show()
 
-def evaluate_model(robot_model: URDF, data_folder: str, verbose: bool = False, offset_distance: float=0.05) -> dict:
-
-    data = read_data(data_folder)
-    kpis = {}
-    for tool_position, recorded_joints in data.items():
-        fks_1 = np.zeros((len(recorded_joints[0]), 3))
-        fks_2 = np.zeros((len(recorded_joints[1]), 3))
-        for i, joint_angles in enumerate(recorded_joints[0]):
-            joints= np.zeros(robot_model.num_actuated_joints)   
-            joints[:len(joint_angles)] = joint_angles
-            robot_model.update_cfg(joints)
-            fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
-            fks_1[i] = np.array(fk[:3, 3]).flatten()
-        for i, joint_angles in enumerate(recorded_joints[1]):
-            joints= np.zeros(robot_model.num_actuated_joints)
-            joints[:len(joint_angles)] = joint_angles
-            robot_model.update_cfg(joints)
-            fk = robot_model.get_transform(frame_from=robot_model.base_link, frame_to="ball_link")
-            fks_2[i] = np.array(fk[:3, 3]).flatten()
-
-        fk_mean_1 = np.round(np.mean(fks_1, axis=0), decimals=10)
-        fk_variance_1 = np.round(np.var(fks_1, axis=0), decimals=10)
-        fk_mean_2 = np.round(np.mean(fks_2, axis=0), decimals=10)
-        fk_variance_2 = np.round(np.var(fks_2, axis=0), decimals=10)
-        distance_error = np.round(np.linalg.norm(fk_mean_1 - fk_mean_2) - offset_distance, decimals=10)
-        consistency = np.round(np.sqrt(np.sum(fk_variance_1 + fk_variance_2)), decimals=10)
-        if verbose:
-            print(f"Tool position: {tool_position}")
-            print(f"Mean_1: {fk_mean_1}")
-            print(f"Variance_1: {fk_variance_1}")
-            print(f"Mean_2: {fk_mean_2}")
-            print(f"Variance_2: {fk_variance_2}")
-            print(f"Consistency: {consistency}")
-            print(f"Distortion: {distance_error}")
-        kpis[tool_position]={
-            "mean_1": fk_mean_1.tolist(),
-            "var_1": fk_variance_1.tolist(),
-            "mean_2": fk_mean_2.tolist(),
-            "var_2": fk_variance_2.tolist(),
-            "distance": float(distance_error),
-            "fks_1": fks_1.tolist(),
-            "fks_2": fks_2.tolist(),
-        }
-    return kpis
-
 def plot_fks_iterations(points_list: list) -> None:
     colors = ['black', 'red', 'green', 'blue', 'yellow', 'purple', 'orange', 'cyan', 'magenta', 'brown']
 
@@ -198,7 +153,7 @@ def set_axes_equal(ax) -> np.ndarray:
     ax.set_zlim3d([midpoints[2] - max_range / 2, midpoints[2] + max_range / 2])
     return limits
 
-def compute_statistics(model: URDF, data_folder: List[str], offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
+def evaluate_model(model: URDF, data_folder: List[str], verbose: bool = False, offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
     data = read_data(data_folder)
     statistics = {}
     for tool_position, recorded_joints in data.items():
@@ -235,16 +190,25 @@ def compute_statistics(model: URDF, data_folder: List[str], offset_distance: flo
         mean_squared_error = (fk_variance_1  * N_1 + fk_variance_2 * N_2)/(N_1+N_2)
         std_dev_fk = np.sqrt(mean_squared_error) 
         statistics[tool_position] = {
-            "mean_1": fk_mean_1,
-            "std_dev_1": np.sqrt(fk_variance_1),
-            "mean_2": fk_mean_2,
-            "std_dev_2": np.sqrt(fk_variance_2),
+            "mean_1": fk_mean_1.tolist(),
+            "std_dev_1": float(np.sqrt(fk_variance_1)),
+            "mean_2": fk_mean_2.tolist(),
+            "std_dev_2": float(np.sqrt(fk_variance_2)),
             "distance_error": float(distance_error),
-            "fks_1": fks_1,
-            "fks_2": fks_2,
-            "mean_absolute_error": weighted_average,
-            "std_dev_fk": std_dev_fk,
+            "fks_1": fks_1.tolist(),
+            "fks_2": fks_2.tolist(),
+            "mean_absolute_error": float(weighted_average),
+            "std_dev_fk": float(std_dev_fk),
         }
+        
+        if verbose: 
+            print(f"Tool position: {tool_position}")
+            print(f"Mean 1: {fk_mean_1}")
+            print(f"Mean 2: {fk_mean_2}")
+            print(f"Distance error: {distance_error}")
+            print(f"Mean absolute error: {weighted_average}")
+            print(f"Standard deviation: {std_dev_fk}")
+
     return statistics
 
 
@@ -269,7 +233,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
 
-        statistics_train = compute_statistics(model_step, data_folders_train, offset_distance=offset_distance)
+        statistics_train = evaluate_model(model_step, data_folders_train, offset_distance=offset_distance)
         for i, (key, value) in enumerate(statistics_train.items()):
             distance_error = value["distance_error"]
             mae = value["mean_absolute_error"]
@@ -278,7 +242,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
             variances_train[i].append(std_dev)
             mae_train[i].append(mae)
 
-        statistics_test = compute_statistics(model_step, data_folders_test, offset_distance=offset_distance)
+        statistics_test = evaluate_model(model_step, data_folders_test, offset_distance=offset_distance)
 
         for i, (key, value) in enumerate(statistics_test.items()):
             distance_error = value["distance_error"]
@@ -334,7 +298,7 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     for step in steps:
         print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
-        statistics = compute_statistics(model_step, data_folders_train, offset_distance=offset_distance)
+        statistics = evaluate_model(model_step, data_folders_train, offset_distance=offset_distance)
         for i, (key, value) in enumerate(statistics.items()):
             distance_error = value["distance_error"]
             std_dev = value["std_dev_fk"]
@@ -342,7 +306,7 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
             variances_train[i].append(std_dev)
         key_training = list(statistics.keys())
 
-        statistics = compute_statistics(model_step, data_folders_test, offset_distance=offset_distance)
+        statistics = evaluate_model(model_step, data_folders_test, offset_distance=offset_distance)
         for i, (key, value) in enumerate(statistics.items()):
             distance_error = value["distance_error"]
             std_dev = value["std_dev_fk"]

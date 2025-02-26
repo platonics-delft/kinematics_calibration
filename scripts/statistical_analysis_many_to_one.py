@@ -141,7 +141,7 @@ def main():
     key_train = [os.path.basename(train) for train in data_path]
     hatch_styles = ['' if key not in key_train else '//' for key in keys]
     bars = plt.bar(keys, stat, color=colors)
-    plt.legend(bars, keys, loc='upper right')
+    plt.legend(bars, keys, loc='upper right', fontsize=20)
     
     for bar, hatch in zip(bars, hatch_styles):
         bar.set_hatch(hatch)
@@ -164,7 +164,7 @@ def main():
     print(f"Max MAE: {max_mae}")
     plt.gcf().set_size_inches(30, 5)
     plt.gcf().set_dpi(100)
-    plt.savefig(f"{output_path}/bar_plot.png")
+    plt.savefig(f"{output_path}/bar_plot.png", bbox_inches='tight')
     plt.show()  
 if __name__ == "__main__":
     main()

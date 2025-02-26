@@ -164,6 +164,9 @@ def main():
     print(f"Max MAE: {max_mae}")
     plt.gcf().set_size_inches(30, 5)
     plt.gcf().set_dpi(100)
+    # add label to the y axis of first subplot
+    plt.subplot(1, 2 * len(data_train) + 1, 1)
+    plt.ylabel('Mean Absolute Error (mm)', fontsize=20)
     plt.savefig(f"{output_path}/bar_plot.png", bbox_inches='tight')
     plt.show()  
 if __name__ == "__main__":

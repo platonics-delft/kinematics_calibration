@@ -390,7 +390,8 @@
     </visual>
   </link>
   <joint name="ball_joint" type="fixed">
-    <origin rpy="0.0 0.0 0.0" xyz="0 0 0.17" />
+    <origin rpy="0.0 0.0 0.0" xyz="0.00038860649894460975 -0.0005822849938650045 0.180196205872143" />
+
     <parent link="gripper_base_link"/>
     <child link="ball_link"/>
   </joint>

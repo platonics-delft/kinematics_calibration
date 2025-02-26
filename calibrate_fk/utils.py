@@ -278,7 +278,7 @@ def compute_improved_performance(model_folder: str, data_folders_train: List[str
         # print(f"Percentage of removed distortion error on test set {np.mean(percentage_improved_distance_test)}")
     else:
         print("No test data provided")
-def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False, comparison_test=True) -> None:
+def plot_training_curves(model_folder: str, data_folders_train: str, data_folders_test: List[str], offset_distance, repeatability : float, latex=False) -> None:
     if latex == True:
         plt.rcParams.update({
         "pgf.texsystem": "pdflatex",  # Use pdflatex or xelatex
@@ -320,15 +320,15 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
 
     ax.set_yscale("log")
     for i, variances in enumerate(variances_train):
-        if comparison_test:
-            ax.plot(steps, variances, label=key_training[i], linewidth=3)
+        if i == 0:
+            ax.plot(steps, variances, color= 'blue', linewidth=3, label="Train")
         else:
             ax.plot(steps, variances, color= 'blue', linewidth=3)
     for i, variances in enumerate(variances_test):
-        if comparison_test:
-            ax.plot(steps, variances, label=key_test[i],  linestyle='--', linewidth=3, alpha=0.8)
+        if i == 0:
+            ax.plot(steps, variances, color= 'orange', linewidth=3, label="Test")
         else:
-            ax.plot(steps, variances, color= 'orange', linewidth=3, alpha=0.8)
+            ax.plot(steps, variances, color= 'orange', linewidth=3)
 
     ax.legend(fontsize=fontsize)
     ax.set_xlabel("Step", fontsize=fontsize)
@@ -356,16 +356,17 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     # make log scale
     ax.set_yscale("log")
     for i, distances in enumerate(distances_train):
-        if comparison_test:
-            ax.plot(steps, distances, label=key_training[i], linewidth=3)
-        else:  
+        if i == 0:
+            ax.plot(steps, distances, color='blue', linewidth=3, label="Train")
+        else:
             ax.plot(steps, distances, color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
-        if comparison_test:
-            ax.plot(steps, distances, label=key_test[i], linestyle='--', linewidth=3,alpha=0.8)
+
+        if i == 0:
+            ax.plot(steps, distances, color='orange', linewidth=3, label="Test")
         else:
-            ax.plot(steps, distances, color='orange', linewidth=3, alpha=0.8)
+            ax.plot(steps, distances, color='orange', linewidth=3)
     #plot dashed horixzaon line at the repeatibility value
     print(f"Repeatability: {repeatability}")
     ax.axhline(y=repeatability, color='k', linestyle='--', linewidth=3)

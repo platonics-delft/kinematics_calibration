@@ -106,27 +106,28 @@ if generate_images:
                 with open(f'{model_folder}/images/{keys}/hole_{j}_config_{i}.png', 'wb') as f:
                     f.write(img_bin)
         
-        # 
-    # Open the input image and read the image data in the folder input_path and append it to the input_image list
-    output_image = []
-    input_path = f"{model_folder}/images/{keys}/"
-    output_path = f"{model_folder}/overlay_"+ keys + ".png"
-    all_files = os.listdir(input_path)
-    image_files = [f for f in all_files if f.endswith(('.png', '.jpg', '.jpeg'))]
+    
+    for keys in data.keys():
+        # Open the input image and read the image data in the folder input_path and append it to the input_image list
+        output_image = []
+        input_path = f"{model_folder}/images/{keys}/"
+        output_path = f"{model_folder}/overlay_"+ keys + ".png"
+        all_files = os.listdir(input_path)
+        image_files = [f for f in all_files if f.endswith(('.png', '.jpg', '.jpeg'))]
 
-    # Select 14 random images
-    if len(image_files) >= max_images:
-        selected_images = random.sample(image_files, max_images)
-    else:
-        selected_images = image_files  # If less than 14 images, use all available
-    for filename in selected_images:
-        with open(input_path + filename, 'rb') as f:
-            input_image = f.read()
+        # Select 14 random images
+        if len(image_files) >= max_images:
+            selected_images = random.sample(image_files, max_images)
+        else:
+            selected_images = image_files  
+        for filename in selected_images:
+            with open(input_path + filename, 'rb') as f:
+                input_image = f.read()
 
-            # Remove the background using rembg
-            output_image.append(input_image)
+                # Remove the background using rembg
+                output_image.append(input_image)
 
-    overlay_images(output_image, output_path)
+        overlay_images(output_image, output_path)
 
 
 

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
 from calibrate_fk.utils import check_urdf_path, check_data_path, evaluate_model
 import matplotlib.colors as mcolors
-
+from matplotlib.patches import Patch
 def main():
 
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
@@ -141,8 +141,10 @@ def main():
     key_train = [os.path.basename(train) for train in data_path]
     hatch_styles = ['' if key not in key_train else '//' for key in keys]
     bars = plt.bar(keys, stat, color=colors)
-    plt.legend(bars, keys, loc='upper right', fontsize=20)
-    
+    # Combine the legends
+    hatch_legend = Patch(facecolor='white', edgecolor='gray', hatch='//', label='Training')
+    bars_legend = [Patch(facecolor=color, label=key) for color, key in zip(colors, keys)]
+    plt.legend(handles=[hatch_legend] + bars_legend, loc='upper center', bbox_to_anchor=(-3, 1.2), ncol=4, fontsize=20)
     for bar, hatch in zip(bars, hatch_styles):
         bar.set_hatch(hatch)
         # set legent of that bar 

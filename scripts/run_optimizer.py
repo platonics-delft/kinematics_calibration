@@ -5,7 +5,7 @@ import shutil
 import sys
 
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
-from calibrate_fk.utils import check_urdf_path, check_data_path
+from calibrate_fk.utils import check_urdf_path, check_data_path, remove_outliers
 
 def main():
 
@@ -98,6 +98,7 @@ def main():
             'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
             }
     optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model])
+    optimizer.data= remove_outliers(optimizer._model, optimizer.data)
     optimizer.evaluate_fks(verbose=True)
     optimizer.optimize(saving_steps=saving_steps)
     optimizer.evaluate_fks(verbose=True)

@@ -3,11 +3,11 @@ import os
 import yaml
 import matplotlib.pyplot as plt
 from calibrate_fk.parameter_optimizer import ParameterOptimizer
-from calibrate_fk.utils import check_urdf_path, check_data_path, evaluate_model, remove_outliers
+from calibrate_fk.utils import check_urdf_path, check_data_path, evaluate_model
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 def main():
-
+    
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--model", "-m", help="Name of the urdf stored in the urdf folder.")
     argument_parser.add_argument("--data", "-t", type=str, nargs='+', help="Data that you want to train the calibration on. Stored in data folder.")
@@ -17,10 +17,7 @@ def main():
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
     argument_parser.add_argument("--variance_noise", "-v", help="Variance of the noise injected to the initial robot parameters", default=0.00)
     argument_parser.add_argument("--number-samples", "-n", help="Number of samples to use", default=None)
-    argument_parser.add_argument("--plot-nominal-model", "-pnm", action="store_true", help="Plot the nominal model")
-    PLOT_NOMINAL_MODEL = False
-    if argument_parser.parse_args().plot_nominal_model:
-        PLOT_NOMINAL_MODEL = True
+    
     args = argument_parser.parse_args()
     model = args.model
     data = args.data
@@ -97,105 +94,31 @@ def main():
     # Convert to list if needed
     colors = list(tableau_colors.values())
     colors = colors[:len(data_train)]
-    total_plot = len(data_train) + len(data_test) + 1
-    # plot the accuracy and show in a bar plot before the optimization 
     plt.figure()
-    sub_plot_index = 0
-    if PLOT_NOMINAL_MODEL:
-        sub_plot_index += 1
-        total_plot += 1
-        plt.subplot(1, total_plot, sub_plot_index)
-        statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
-        stat = []   
-        for values in statistics.values():
-            stat.append(values["mean_absolute_error"]*1000)
-        max_mae =max(max_mae, max(stat))
-        keys = list(statistics.keys())
-        bars = plt.bar(keys, stat, color=colors)
-        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    for i, data_selected in enumerate(data_train):
-        optimizer.read_data(data_selected, number_samples=number_samples)
-        optimizer.data= remove_outliers(optimizer._model, optimizer.data)
-        optimizer.optimize(saving_steps=False)
-        statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
-        stat = []   
-        for values in statistics.values():
-            stat.append(values["mean_absolute_error"]*1000)
-        max_mae =max(max_mae, max(stat))
-        keys = list(statistics.keys())
-        key_train = [os.path.basename(train) for train in data_selected]
-        sub_plot_index += 1 
-        plt.subplot(1, total_plot, sub_plot_index)
-        # set y axis scale 
-        
-        hatch_styles = ['' if key not in key_train else '//' for key in keys]
-        bars = plt.bar(keys, stat, color=colors)
-        for bar, hatch in zip(bars, hatch_styles):
-            bar.set_hatch(hatch)
-        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    for i, data_selected in enumerate(data_test):
-        optimizer.read_data(data_selected, number_samples=number_samples)
-        optimizer.data = remove_outliers(optimizer._model, optimizer.data)
-        optimizer.optimize(saving_steps=False)
-        statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
-        stat = []   
-        for values in statistics.values():
-            stat.append(values["mean_absolute_error"]*1000)
-        max_mae = max(max_mae,max(stat))
-        keys = list(statistics.keys())
-        key_train = [os.path.basename(train) for train in data_selected]
-        sub_plot_index += 1
-        plt.subplot(1, total_plot , sub_plot_index)
-        hatch_styles = ['' if key not in key_train else '//' for key in keys]
-        bars = plt.bar(keys, stat, color=colors)
-        for bar, hatch in zip(bars, hatch_styles):
-            bar.set_hatch(hatch)
-        plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    sub_plot_index += 1
-    plt.subplot(1, total_plot , sub_plot_index)
-    optimizer.read_data(data_path, number_samples=number_samples)
-    optimizer.data = remove_outliers(optimizer._model, optimizer.data)
+
+    optimizer.read_data(data_train[0], number_samples=number_samples)
     optimizer.optimize(saving_steps=False)
     statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
     stat = []   
     for values in statistics.values():
         stat.append(values["mean_absolute_error"]*1000)
-    max_mae = max(max_mae,max(stat))
+    max_mae =max(max_mae, max(stat))
     keys = list(statistics.keys())
-    key_train = [os.path.basename(train) for train in data_path]
-    hatch_styles = ['' if key not in key_train else '//' for key in keys]
-    bars = plt.bar(keys, stat, color=colors)
+    key_train = [os.path.basename(train) for train in data_train[0]]
+    # set y axis scale 
     # Combine the legends
     hatch_legend = Patch(facecolor='white', edgecolor='gray', hatch='//', label='Training')
     bars_legend = [Patch(facecolor=color, label=key) for color, key in zip(colors, keys)]
-    plt.legend(handles=[hatch_legend] + bars_legend, loc='upper center', bbox_to_anchor=(-3, 1.2), ncol=4, fontsize=20)
+    plt.legend(handles=[hatch_legend] + bars_legend, loc='upper center', ncol=len(data_train), fontsize=20)
+
+    hatch_styles = ['' if key not in key_train else '//' for key in keys]
+    bars = plt.bar(keys, stat, color=colors)
     for bar, hatch in zip(bars, hatch_styles):
         bar.set_hatch(hatch)
-        # set legent of that bar 
-    #do not print anything on the x axis
     plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
-    #show the plot to be wide
-    #set plot size
-    plt.gcf().set_size_inches(30, 5)
-    for i in range(1, total_plot+1):
-        # sub_plot_index += 1
-        plt.subplot(1, total_plot, i)
-        plt.ylim(0, max_mae * 1.1)
-        if i == 1:
-            plt.ylabel('Mean Absolute Error (mm)', fontsize=20)
-        elif i == 1 or i==2:
-            plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=True)
-        else:
-            plt.tick_params(axis='y', which='both', left=True, right=False, labelleft=False)
-
-    print(f"Max MAE: {max_mae}")
-    plt.gcf().set_size_inches(30, 5)
-    plt.gcf().set_dpi(100)
-    # add label to the y axis of first subplot
-    # sub_plot_index += 1
-    plt.subplot(1, total_plot, 1)
+    
     plt.ylabel('Mean Absolute Error (mm)', fontsize=20)
-    plt.savefig(f"{output_path}/bar_plot_statistics_train_one_vs_many_or_many_vs_one.png", bbox_inches='tight')
+    plt.savefig(f"{output_path}/bar_plot_one_to_many.png", bbox_inches='tight')
     plt.show()  
 if __name__ == "__main__":
     main()

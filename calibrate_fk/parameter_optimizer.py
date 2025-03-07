@@ -255,7 +255,7 @@ class ParameterOptimizer():
                 #aggregate onlyy if the name of the joint is not ball_joint
                 if joint_name != "ball_joint":
                     residuals.append(param_epsilon**2)
-        objective += self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
+        objective += len(self.data.values()) * self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
 
         parameter_list = self.list_parameters()
         # Add constraints

@@ -12,6 +12,8 @@ from yourdfpy import URDF
 from io import BytesIO
 import sys
 
+import re
+
 def read_data(folder: str, number_samples: Optional[int] = None) -> None:
     # create an empty dictionary to store the data
     data = {} 
@@ -155,6 +157,8 @@ def set_axes_equal(ax) -> np.ndarray:
 
 def evaluate_model(model: URDF, data_folder: List[str], verbose: bool = False, offset_distance: float = 0.05) -> Dict[str, np.ndarray]:
     data = read_data(data_folder)
+    # remove outliers
+    data= remove_outliers(model, data)
     statistics = {}
     for tool_position, recorded_joints in data.items():
         data_hole_0 = recorded_joints[0]
@@ -211,7 +215,45 @@ def evaluate_model(model: URDF, data_folder: List[str], verbose: bool = False, o
 
     return statistics
 
+def remove_outliers(model, data, verbose=False):
 
+    for tool_position, recorded_joints in data.items():
+        data_hole_0 = recorded_joints[0]
+        data_hole_1 = recorded_joints[1]
+        fks_1 = np.zeros((len(data_hole_0), 3))
+        fks_2 = np.zeros((len(data_hole_1), 3))
+        for i, joint_angles in enumerate(data_hole_0):
+            joint= np.zeros(model.num_actuated_joints)
+            joint[:len(joint_angles)] = joint_angles
+            model.update_cfg(joint)
+            fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+            fks_1[i] = np.array(fk[:3, 3]).flatten()
+        for i, joint_angles in enumerate(data_hole_1):
+            joint= np.zeros(model.num_actuated_joints)
+            joint[:len(joint_angles)] = joint_angles
+            model.update_cfg(joint)
+            fk = model.get_transform(frame_from=model.base_link, frame_to="ball_link")
+            fks_2[i] = np.array(fk[:3, 3]).flatten()
+        # remove outliers
+        alpha=2
+        q1_1 = np.percentile(fks_1, 25, axis=0)
+        q3_1 = np.percentile(fks_1, 75, axis=0)
+        iqr_1 = q3_1 - q1_1
+        mask_1 = np.all((fks_1 >= (q1_1 - alpha * iqr_1)) & (fks_1 <= (q3_1 + alpha * iqr_1)), axis=1)
+
+        q1_2 = np.percentile(fks_2, 25, axis=0)
+        q3_2 = np.percentile(fks_2, 75, axis=0)
+        iqr_2 = q3_2 - q1_2
+        mask_2 = np.all((fks_2 >= (q1_2 - alpha * iqr_2)) & (fks_2 <= (q3_2 + alpha * iqr_2)), axis=1)
+        if verbose:
+            
+            # how many outlier did you detect?
+            print(f"Outliers detected for hole 0: {len(fks_1) - np.sum(mask_1)} for tool position {tool_position}")
+            print(f"Outliers detected for hole 1: {len(fks_2) - np.sum(mask_2)} for tool position {tool_position}")
+
+        #update the data
+        # data[tool_position] = [data_hole_0[mask_1], data_hole_1[mask_2]]
+    return data
 def compute_improved_performance(model_folder: str, data_folders_train: List[str], data_folders_test: List[str], offset_distance, latex=False) -> None:
 
     kpis = yaml.load(open(f"{model_folder}/kpis.yaml"), Loader=yaml.FullLoader)
@@ -321,12 +363,12 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     ax.set_yscale("log")
     for i, variances in enumerate(variances_train):
         if i == 0:
-            ax.plot(steps, variances, color= 'blue', linewidth=3, label="Train")
+            ax.plot(steps, variances, color= 'blue', linewidth=3, label="train")
         else:
             ax.plot(steps, variances, color= 'blue', linewidth=3)
     for i, variances in enumerate(variances_test):
         if i == 0:
-            ax.plot(steps, variances, color= 'orange', linewidth=3, label="Test")
+            ax.plot(steps, variances, color= 'orange', linewidth=3, label="test")
         else:
             ax.plot(steps, variances, color= 'orange', linewidth=3)
 
@@ -357,14 +399,14 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     ax.set_yscale("log")
     for i, distances in enumerate(distances_train):
         if i == 0:
-            ax.plot(steps, distances, color='blue', linewidth=3, label="Train")
+            ax.plot(steps, distances, color='blue', linewidth=3, label="train")
         else:
             ax.plot(steps, distances, color='blue', linewidth=3)
     for i, distances in enumerate(distances_test):
         name = data_folders_test[i].split("/")[-1]
 
         if i == 0:
-            ax.plot(steps, distances, color='orange', linewidth=3, label="Test")
+            ax.plot(steps, distances, color='orange', linewidth=3, label="test")
         else:
             ax.plot(steps, distances, color='orange', linewidth=3)
     #plot dashed horixzaon line at the repeatibility value
@@ -400,10 +442,6 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     plt.show()
 
 
-    # Can you export each axes to a separate file?
-
-
-import re
 
 def modify_urdf(urdf_file: str, search_pattern: str, replace_with: str, output_file: str):
     """

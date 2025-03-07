@@ -35,8 +35,20 @@ def read_each(folder: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
     file_path_2 = os.path.join(recording_folder, "hole_1.csv")
     if not os.path.exists(file_path_2):
         raise FileNotFoundError(f"Data file {file_path_2} not found.")
-    data_1 = np.loadtxt(file_path_1, delimiter=",")
-    data_2 = np.loadtxt(file_path_2, delimiter=",")
+    
+    try:
+        data_1 = np.loadtxt(file_path_1, delimiter=",")
+    except Exception as e:
+        raise ValueError(f"Failed to load data from {file_path_1}. Error: {e}")
+    try:
+        data_2 = np.loadtxt(file_path_2, delimiter=",")
+    except Exception as e:
+        raise ValueError(f"Failed to load data from {file_path_2}. Error: {e}")
+    # check if the array is loaded correctly and it is not empty 
+    if data_1.size == 0 or data_2.size == 0:
+        raise ValueError(f"Data files {file_path_1} or {file_path_2} are empty.")
+    if data_1.shape[1] != data_2.shape[1]:
+        raise ValueError(f"Data files {file_path_1} and {file_path_2} have different number of columns.")
     return data_1, data_2
 
 def replace_mesh_with_cylinder(urdf_file, out_file: str) -> str:

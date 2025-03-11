@@ -11,7 +11,7 @@ import yaml
 import yourdfpy
 from PIL import Image
 
-from calibrate_fk.utils import (compute_statistics, overlay_images,
+from calibrate_fk.utils import (evaluate_model, overlay_images,
                                 read_data,
                                 replace_mesh_with_cylinder)
 
@@ -64,7 +64,7 @@ if eval_folder:
     q_hole_0, q_hole_1 = read_data(eval_folder)
     images = []
     q_0 = q_hole_0[0]
-    kpis = compute_statistics(robot, eval_folder, offset_distance=offset_distance)
+    kpis = evaluate_model(robot, eval_folder, offset_distance=offset_distance)
     # kpis_core should be the same but without the keys fks_1 and fks_2
     kpis_core = {k: v for k, v in kpis.items() if k not in ['fks_1', 'fks_2']}
     pprint(kpis_core)

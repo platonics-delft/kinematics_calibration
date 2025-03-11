@@ -217,41 +217,36 @@ class ParameterOptimizer():
 
     def read_data(self, folder: str, number_samples: Optional[int] = None) -> None:
         self._data_folder = folder
-        self._data_1, self._data_2 = read_data(folder=folder)
-        # pick 10 random samples from each set
-        if number_samples is not None:
-            self._data_1 = self._data_1[np.random.choice(self._data_1.shape[0], number_samples, replace=False)]
-            self._data_2 = self._data_2[np.random.choice(self._data_2.shape[0], number_samples, replace=False)]
+        # create an empty dictionary to store the data
+        self.data = read_data(folder=folder, number_samples=number_samples)
 
     def optimize(self, saving_steps: bool = False):
         self.create_fk_expression()
         self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
-        fks_1 = []
-        for joint_angles_1 in self._data_1:
-            substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
-            fks_1.append(substituted_fk)
-        fks_2 = []
-        for joint_angles_2 in self._data_2:
-            substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_2)
-            fks_2.append(substituted_fk)
+        # for each element in read_multiplethe dictionary 
+        objective = 0
+        for sockets in self.data.values():
+            fks_1 = []
+            for joint_angles_1 in sockets[0]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
+                fks_1.append(substituted_fk)
+            fks_2 = []
+            for joint_angles_2 in sockets[1]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_2)
+                fks_2.append(substituted_fk)
 
-        fk_mean_1 = ca.sum2(ca.horzcat(*fks_1)) / len(fks_1)
-        N1 = len(fks_1)
-        fk_variance_1 = ca.sum2(ca.horzcat(*[(fk - fk_mean_1)**2 for fk in fks_1])) / len(fks_1)
-        fk_variance_norm_1 = ca.sum1(fk_variance_1)
-        fk_mean_2 = ca.sum2(ca.horzcat(*fks_2)) / len(fks_2)
-        N2 = len(fks_2)
-        fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
-        fk_variance_norm_2 = ca.sum1(fk_variance_2)
+            fk_mean_1 = ca.sum2(ca.horzcat(*fks_1)) / len(fks_1)
+            N1 = len(fks_1)
+            fk_variance_1 = ca.sum2(ca.horzcat(*[(fk - fk_mean_1)**2 for fk in fks_1])) / len(fks_1)
+            fk_variance_norm_1 = ca.sum1(fk_variance_1)
+            fk_mean_2 = ca.sum2(ca.horzcat(*fks_2)) / len(fks_2)
+            N2 = len(fks_2)
+            fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
+            fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
-        distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
-        # repeatability = 0.0001
-        # distance_error = ca.fmax(distance_error - repeatability, 0)
-        distance_error_squared = distance_error**2
-        # height_error = ca.norm_2(fk_mean_1[2] - fk_mean_2[2])**2 
-
-
-        objective = (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2) + distance_error_squared
+            distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
+            distance_error_squared = distance_error**2
+            objective += (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2) + distance_error_squared
 
         residuals = []
         for joint_name, joint_params in self._params.items():
@@ -260,14 +255,7 @@ class ParameterOptimizer():
                 #aggregate onlyy if the name of the joint is not ball_joint
                 if joint_name != "ball_joint":
                     residuals.append(param_epsilon**2)
-        objective += self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
-
-
-        
-
-
-
-
+        objective += len(self.data.values()) * self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
 
         parameter_list = self.list_parameters()
         # Add constraints

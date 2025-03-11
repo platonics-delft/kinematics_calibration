@@ -22,9 +22,17 @@ Or install the package through poetry, using
 ```bash
 poetry install
 ```
-## Record the data
-![Alt Text](imgs/mucka.gif)
+## What do we propose in this new approach? 
+![Alt Text](imgs/Calibration_scheme.png)
 
+The method contribution is the Minimalist and User-friendly Kinematics Calibration (MUKCa) available in the [stl/MUKCa_tool.stl](stl/MUKCa_tool.stl) folder, as the combination of an affordable calibration tool, illustrated in figure and
+an optimization algorithm for kinematic parameter identification. The proposed minimalist tool is designed for accessibility and affordability, and it is 3D printable and composed of a sphere (or ball) with a two-socket base, as illustrated, without relying on external measurement systems or camera. After printing them, the calibration can immediately start with the data recording on the robot by simply placing the tool in front of the robot and the sphere attached to the end-effector. 
+
+The two sockets are printed at a known distance, and the ball is printed to have the minimal possible play in the sockets. 
+
+We propose a novel optimization routine. After collecting set of joint configurations for each socket, the calibration routine minimizes the variance of the predicted ball position for each of the two sockets, maximizing the model nullspace consistency.  Moreover, the model is optimized such that the distance among the average prediction matches the known distance between the two sockets, minimizing the model volumetric distortion. This consistency-and-distortion optimization is the first of its kind in the field of kinematic calibration. 
+
+## Record the data
 To record the data, we rely on the ros topic that has the joint angles of the encoders. Place this repository in a catkin workspace and build it. 
 
 ```bash
@@ -96,6 +104,13 @@ This script runs the optimazation and prints the result. It outputs a new `urdf`
 python3 run_optimizer.py --model panda --data panda_1/front
 ``` 
 
+Training on one position is sufficient but training on multiple tool position that are placed in different parts of the workspace, is as easy as specifying their path in the --data input, for example: 
+```bash
+python3 run_optimizer.py --model panda --data panda_1/front panda_1/left panda_1/right panda_1/high
+``` 
+The optimization will now try to maximize the consistency in any of the sockets of each tool and the bias in the predicted distance between the two sockets. 
+![alt text](imgs/bar_plot_panda_2.jpg)
+In this plot we trained and evaluated on different positions of the tool or in all of them. You can see that even when training only on the front, the final accuracy on the right-high position, is still good. By training on all the position, the performace goes low everywhere. 
 ## Plot the learning curves
 To diplay how good the model gets, we diplay the learning and the validation curves by running 
 
@@ -113,27 +128,7 @@ The right figure shows the distortion of the robot, i.e. the error in the distan
 
 ## Evaluate a calibrated model on a particular dataset
 
-You can evaluate the calibrated model on any dataset that you recorded for that robot
-
-```bash
-python3 eval_model.py --model <calibrated_model> --data <path/to/data/folder> 
-```
-For example, 
-
-```bash
-python3 eval_model.py  --model panda_1 --data panda_1/front
-```
-
-You will get some numbers as outputs:
-- 'distance_error': 2.01384625872561e-05,
-- 'height_error': 0.00013234018119939392,
-- 'mean_1': array([ 0.47548193, -0.20020225,  0.01592467]),
-- 'mean_2': array([ 0.4757642 , -0.15022336,  0.01579233]),
-- 'std_dev_1': 0.00027288376639481986,
-- 'std_dev_2': 0.00028558583889686857,
-- 'std_dev_fk': 0.00039499977384835393
-
-You can also show the improved performance from the original nominal model to the obtained calibrated model. 
+You can evaluate the calibrated model
 
 ```bash
 python3 compute_improved_performance.py  --model panda_1
@@ -141,14 +136,10 @@ python3 compute_improved_performance.py  --model panda_1
 
 The terminal will output the following statistics:
 
-- The consistency went from 1.2716E-02 to 2.3783E-04 on the training data
-- The distortion went from 4.3804E-03 to 2.2794E-06 on the training data
-- The consistency went from 1.3118E-02 to 5.3291E-04 on the test data on average
-- The distortion went from 2.4071E-03 to 1.6866E-04 on the test data on average
-Percentage of removed error on training set: 98.12971564632001
-- Percentage of removed distortion error on training set: 99.94796380540399
-- Percentage of removed error on test set: 95.93608375730201
-- Percentage of removed distortion error on test set 83.80232142397945
+The mean absolute error  went from 8.28e-03 to 1.68e-04 on the train data on average
+Percentage of removed error on train set: 97.97
+The mean absolute error  went from 7.79e-03 to 3.47e-04 on the test data on average
+Percentage of removed error on test set: 94.92
 
 We can read the on the training set but also in the test set, 95 % of the consistency error was removed after the calibration. This makes the robot to be almost perfectly calibrated. 
 
@@ -181,3 +172,18 @@ You can use the [Franka human friendly controllers](https://github.com/franzeseg
 python3 convert_panda_urdf.py -m panda_1
 ```
 this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this file in the controller repo ( in the urdf directory) and follow the instructions on how to start the controller using the calibrated external model. 
+
+# Print the tool
+We used a BambuLab A1. We printed with classic PLA, with the finest available settings, i.e. 0.08 mm. The printer is very precise, when measuring the distance between the socket using a caliper, it will have an error of less than 0.1 mm. This is very desirable considering that we are using that to calibrate. The tool has two pairs of notches to fit calibers. Usually calipers have an angles of 45 deg or 30 deg, check on which side it fits the best 
+![alt text](imgs/mukca_tool.png). Use a caliper with a resolution of at least 0.01 mm. If you see that the distance is between 40.90 and 50.10 mm, it means that the print is perfectly calibrated. Otherwsie, you can specify the distance you read in the optimization in meters. E.g.
+python3 run_optimizer.py --model <nomial_urdf_name> --data <path/to/data/folder> --distance 0.051
+We always found the printed tool to be at almost perfect distance of 50 mm!
+# Limitations 
+The proposed method does not work for all the robots! Here is an example of performing the training on the kinova gen3lite robot. They do not have harmonic drives in each joint, hence they have more backlash. This is a problem, since we have uncertainty in the joint angles. Let's look at the bar plot before and after the training on different tool position. 
+![alt text](imgs/bar_plot_statistics_kinova.png)
+We can observe that training on the front brings the error down also on the left and on a position on the right (and higher) position of the tool. However, if we train only on the left, we observe overfitting, making the accuracy on the other position to decrease with respect to the orginal nominal model. For the kinova it is actually convenient to train on all the tool position. This brings the error down everywhere removoing the influence of the noisy joint reading. 
+# Cite us! 
+This new method is under review as a publication and the pre-print will soon be available. Please, if you calibrated the URDF and used it in your research and think that it was useful, please reach out to Giovanni (g.franzese@tudelft.nl) in case you cannot find the paper yet!
+
+# Give feedback! 
+Any feedback, on the usability, on the method and on the results are appreciated and welcome! Let's make robot accurate again. 

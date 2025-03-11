@@ -12,7 +12,7 @@ def main():
     argument_parser = argparse.ArgumentParser(description='Run the parameter optimizer')
     argument_parser.add_argument("--model", "-m", help="Name of the urdf stored in the urdf folder.")
     argument_parser.add_argument("--data", "-t", type=str, nargs='+', help="Data that you want to train the calibration on. Stored in data folder.")
-    argument_parser.add_argument("--offset-distance", "-d", help="Distance to offset the end effector", default=0.05)
+    argument_parser.add_argument("--offset-distance", "-d", help="Distance between the sockets in meters, defauls it 0.05", default=0.05)
     argument_parser.add_argument("--regularizer", "-reg", help="Regularizer for the optimization", default=1e-4)
     argument_parser.add_argument("--end-effector", "-ee", help="End effector link", default="ball_link")
     argument_parser.add_argument("--root-link", "-rl", help="Root link", default="base_link")
@@ -85,10 +85,7 @@ def main():
     optimizer.set_regulizer_weight(regularizer)
     optimizer.load_model(urdf_path)
     # check if datapath has folder inside or only files
-    # breakpoint()
-
     optimizer.read_data(data_path, number_samples=number_samples)   
-    # breakpoint() 
     optimizer.create_symbolic_fk(root_link, end_effector)
 
     parameters = {

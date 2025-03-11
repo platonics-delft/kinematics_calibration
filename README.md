@@ -8,8 +8,18 @@ relevant when working with cartesian control where an accurate forward kinematic
 The method implemented in this repository was mainly developed for the Franka
 Emika Panda robot, where inaccurate kinematics have been raised a few times but was tested on many other commercial robots. This is the first tool that does not require any external systems like optitrack, camera sensors or laser trackers. You will only need one simple tool to place in front of the robot. 
 The tool is 3D printable and it is composed of two spherical sockets placed at a distance of 50 mm. A 3D printable spherical joint is then attached to the end effector and used to record many position of the robt in each of the sockets, identified as 0 and 1. 
-![alt text](imgs/mukca_tool.png)
+![alt text](imgs/mukca.png)
 The first step is the data recording and then the optimization is performed to optimize the robot urdf file. 
+
+## What do we propose in this new approach? 
+![Alt Text](imgs/Calibration_scheme.png)
+
+The method contribution is the Minimalist and User-friendly Kinematics Calibration (MUKCa) available in the [stl/MUKCa_tool.stl](stl/MUKCa_tool.stl) folder, as the combination of an affordable calibration tool, illustrated in figure and
+an optimization algorithm for kinematic parameter identification. The proposed minimalist tool is designed for accessibility and affordability, and it is 3D printable and composed of a sphere (or ball) with a two-socket base, as illustrated, without relying on external measurement systems or camera. After printing them, the calibration can immediately start with the data recording on the robot by simply placing the tool in front of the robot and the sphere attached to the end-effector. 
+
+The two sockets are printed at a known distance, and the ball is printed to have the minimal possible play in the sockets. 
+
+We propose a novel optimization routine. After collecting set of joint configurations for each socket, the calibration routine minimizes the variance of the predicted ball position for each of the two sockets, maximizing the model nullspace consistency.  Moreover, the model is optimized such that the distance among the average prediction matches the known distance between the two sockets, minimizing the model volumetric distortion. This consistency-and-distortion optimization is the first of its kind in the field of kinematic calibration. 
 
 ## Installation
 This is a python package named calibrated_fk. 
@@ -22,15 +32,6 @@ Or install the package through poetry, using
 ```bash
 poetry install
 ```
-## What do we propose in this new approach? 
-![Alt Text](imgs/Calibration_scheme.png)
-
-The method contribution is the Minimalist and User-friendly Kinematics Calibration (MUKCa) available in the [stl/MUKCa_tool.stl](stl/MUKCa_tool.stl) folder, as the combination of an affordable calibration tool, illustrated in figure and
-an optimization algorithm for kinematic parameter identification. The proposed minimalist tool is designed for accessibility and affordability, and it is 3D printable and composed of a sphere (or ball) with a two-socket base, as illustrated, without relying on external measurement systems or camera. After printing them, the calibration can immediately start with the data recording on the robot by simply placing the tool in front of the robot and the sphere attached to the end-effector. 
-
-The two sockets are printed at a known distance, and the ball is printed to have the minimal possible play in the sockets. 
-
-We propose a novel optimization routine. After collecting set of joint configurations for each socket, the calibration routine minimizes the variance of the predicted ball position for each of the two sockets, maximizing the model nullspace consistency.  Moreover, the model is optimized such that the distance among the average prediction matches the known distance between the two sockets, minimizing the model volumetric distortion. This consistency-and-distortion optimization is the first of its kind in the field of kinematic calibration. 
 
 ## Record the data
 To record the data, we rely on the ros topic that has the joint angles of the encoders. Place this repository in a catkin workspace and build it. 
@@ -174,16 +175,17 @@ python3 convert_panda_urdf.py -m panda_1
 this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this file in the controller repo ( in the urdf directory) and follow the instructions on how to start the controller using the calibrated external model. 
 
 # Print the tool
-We used a BambuLab A1. We printed with classic PLA, with the finest available settings, i.e. 0.08 mm. The printer is very precise, when measuring the distance between the socket using a caliper, it will have an error of less than 0.1 mm. This is very desirable considering that we are using that to calibrate. The tool has two pairs of notches to fit calibers. Usually calipers have an angles of 45 deg or 30 deg, check on which side it fits the best 
-![alt text](imgs/mukca_tool.png). Use a caliper with a resolution of at least 0.01 mm. If you see that the distance is between 40.90 and 50.10 mm, it means that the print is perfectly calibrated. Otherwsie, you can specify the distance you read in the optimization in meters. E.g.
-python3 run_optimizer.py --model <nomial_urdf_name> --data <path/to/data/folder> --distance 0.051
-We always found the printed tool to be at almost perfect distance of 50 mm!
+We used a BambuLab A1. We printed with classic PLA, with the finest available settings, i.e. 0.08 mm. The printer is very precise, when measuring the distance between the socket using a caliper, it will have an error of less than 0.1 mm. This is very desirable considering that we are using that to calibrate. The tool has two pairs of notches to fit calibers. Usually calipers have an angles of 45 deg or 30 deg, check on which side it fits the best. Use a caliper with a resolution of at least 0.01 mm. If you see that the distance is between 40.90 and 50.10 mm, it means that the print is perfectly calibrated. Otherwsie, you can specify the distance you read in the optimization in meters. E.g.
+python3 run_optimizer.py --model <nomial_urdf_name> --data <path/to/data/folder> --distance 0.0501
+We always found the printed tool to be at (almost) perfect distance of 50 mm!
 # Limitations 
 The proposed method does not work for all the robots! Here is an example of performing the training on the kinova gen3lite robot. They do not have harmonic drives in each joint, hence they have more backlash. This is a problem, since we have uncertainty in the joint angles. Let's look at the bar plot before and after the training on different tool position. 
 ![alt text](imgs/bar_plot_statistics_kinova.png)
 We can observe that training on the front brings the error down also on the left and on a position on the right (and higher) position of the tool. However, if we train only on the left, we observe overfitting, making the accuracy on the other position to decrease with respect to the orginal nominal model. For the kinova it is actually convenient to train on all the tool position. This brings the error down everywhere removoing the influence of the noisy joint reading. 
-# Cite us! 
-This new method is under review as a publication and the pre-print will soon be available. Please, if you calibrated the URDF and used it in your research and think that it was useful, please reach out to Giovanni (g.franzese@tudelft.nl) in case you cannot find the paper yet!
 
-# Give feedback! 
-Any feedback, on the usability, on the method and on the results are appreciated and welcome! Let's make robot accurate again. 
+# Cite this work.
+This new method is under review for publication, and the pre-print will be available soon. If you calibrated your URDF and used it in your research, and found it helpful, please reach out to Giovanni (g.franzese@tudelft.nl) if you cannot find the paper yet! If you are in a company and calibrate your Franka using the MUKCa tool, please acknowledge it.
+
+# Give feedback!
+
+Any feedback on the usability, the method, and the results is appreciated and welcome! Let's make collaborative robots accurate together.

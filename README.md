@@ -12,7 +12,7 @@ The tool is 3D printable and it is composed of two spherical sockets placed at a
 The first step is the data recording and then the optimization is performed to optimize the robot urdf file. 
 
 ## What do we propose in this new approach? 
-![Alt Text](imgs/Calibration_scheme.png)
+<!-- ![Alt Text](imgs/Calibration_scheme.png) -->
 
 The method contribution is the Minimalist and User-friendly Kinematics Calibration (MUKCa) available in the [stl/MUKCa_tool.stl](stl/MUKCa_tool.stl) folder, as the combination of an affordable calibration tool, illustrated in figure and
 an optimization algorithm for kinematic parameter identification. The proposed minimalist tool is designed for accessibility and affordability, and it is 3D printable and composed of a sphere (or ball) with a two-socket base, as illustrated, without relying on external measurement systems or camera. After printing them, the calibration can immediately start with the data recording on the robot by simply placing the tool in front of the robot and the sphere attached to the end-effector. 
@@ -142,7 +142,7 @@ Percentage of removed error on train set: 97.97
 The mean absolute error  went from 7.79e-03 to 3.47e-04 on the test data on average
 Percentage of removed error on test set: 94.92
 
-We can read the on the training set but also in the test set, 95 % of the consistency error was removed after the calibration. This makes the robot to be almost perfectly calibrated. 
+We can read that on the training set but also in the test set, 95 % of the consistency error was removed after the calibration. This makes the robot to be almost perfectly calibrated. 
 
 ### Visualize the overlay of the robot prediction
 You can generate also an overlay of the robot in the different configurations that were recorded. For example 

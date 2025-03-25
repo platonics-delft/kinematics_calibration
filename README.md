@@ -178,13 +178,49 @@ this will generated a **panda_calibrated.urdf** in the panda_1 folder. Copy this
 We used a BambuLab A1. We printed with classic PLA, with the finest available settings, i.e. 0.08 mm. The printer is very precise, when measuring the distance between the socket using a caliper, it will have an error of less than 0.1 mm. This is very desirable considering that we are using that to calibrate. The tool has two pairs of notches to fit calibers. Usually calipers have an angles of 45 deg or 30 deg, check on which side it fits the best. Use a caliper with a resolution of at least 0.01 mm. If you see that the distance is between 40.90 and 50.10 mm, it means that the print is perfectly calibrated. Otherwsie, you can specify the distance you read in the optimization in meters. E.g.
 python3 run_optimizer.py --model <nomial_urdf_name> --data <path/to/data/folder> --distance 0.0501
 We always found the printed tool to be at (almost) perfect distance of 50 mm!
+![Alt Text](imgs/caliper.jpeg)
+
+You can can remix the tools, I shared them in an [Onshape](https://cad.onshape.com/documents/0b6b115d8701048ec8c03433/w/dadf4b03313f5058948ebaa5/e/40893559aa99a64107618f54?renderMode=0&uiState=67e2e1d063975d2a0e09916f). 
+# Try it with your robot and your own urdf! 
+There are situations where for example you want to change the end effector position in the URDF or where you want to put a sensor between the last joint and the hand. 
+This is an example we have in the lab in TU Delft with the bota sensor. 
+![Alt Text](imgs/franka_with_bota_sensor.png)
+- I created a new urdf file in the homonym folder with the sensor located in between the two joints. I called the file panda_plus_bota.urdf
+- I also added the mesh in the homonym folder so I can visualize it 
+- I create a file panda_plus_bota.yaml in config_optimizer where I specify all the joints that are going to be optimized. Each joint has xyz rpy variable optimized as transformation from the previous joint. For example I choose to optimize all the first 7 joints, the ball transformation and also the transformation of the sensor since I do not know the perfect dimension of the sensor. 
+  - panda_joint1
+  - panda_joint2
+  - panda_joint3
+  - panda_joint4
+  - panda_joint5
+  - panda_joint6
+  - panda_joint7
+  - bota_sensor_joint
+  - ball_joint
+- Record the data. As far as you have a joint_states topic, you can run the command describe at the beginning of this instructions. For example: 
+```bash
+rosrun calibration_tools record_joint_states_dataset --joint-state-topic-name joint_states --robot-name panda_with_sensor --tool-position-on-table front --robot-dof 7
+```
+This will save the data in the direction `data` with the name `panda_with_sensor\front`. Nice. 
+
+- Let's optimize the urdf now: 
+```
+python3 generate_complete_analysis.py --model panda_plus_bota --data panda_1_with_sensor/front
+```
+This will generate an optimized file in `calibrated_urdf` in the subfolder `panda_with_sensor` named `panda_plus_bota.urdf`. So now you can take your old broken urdf and swap it with the new one.  
+
 # Limitations 
 The proposed method does not work for all the robots! Here is an example of performing the training on the kinova gen3lite robot. They do not have harmonic drives in each joint, hence they have more backlash. This is a problem, since we have uncertainty in the joint angles. Let's look at the bar plot before and after the training on different tool position. 
 ![alt text](imgs/bar_plot_statistics_kinova.png)
 We can observe that training on the front brings the error down also on the left and on a position on the right (and higher) position of the tool. However, if we train only on the left, we observe overfitting, making the accuracy on the other position to decrease with respect to the orginal nominal model. For the kinova it is actually convenient to train on all the tool position. This brings the error down everywhere removoing the influence of the noisy joint reading. 
 
 # Cite this work.
-This new method is under review for publication, and the pre-print will be available soon. If you calibrated your URDF and used it in your research, and found it helpful, please reach out to Giovanni (g.franzese@tudelft.nl) if you cannot find the paper yet! If you are in a company and calibrate your Franka using the MUKCa tool, please acknowledge it.
+This new method is under review for publication.
+You can cite it the preprint:
+```
+Franzese, G., Spahn, M., Kober, J. and Della Santina, C., 2025. MUKCa: Accurate and Affordable Cobot Calibration Without External Measurement Devices. arXiv preprint arXiv:2503.12584.
+```
+If you calibrated your URDF and used it in your research, and found it helpful, please reach out to Giovanni (g.franzese@tudelft.nl). If you are in a company and calibrate your robot using the MUKCa tool, please acknowledge it.
 
 # Give feedback!
 

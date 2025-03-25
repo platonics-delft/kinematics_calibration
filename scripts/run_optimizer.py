@@ -87,14 +87,10 @@ def main():
     # check if datapath has folder inside or only files
     optimizer.read_data(data_path, number_samples=number_samples)   
     optimizer.create_symbolic_fk(root_link, end_effector)
-
-    parameters = {
-            'panda': [f"panda_joint{i}" for i in range(1, 8)] + ['ball_joint'],
-            'iiwa14': [f"joint_a{i}" for i in range(1, 8)] + ['ball_joint'],
-            'gen3lite': [f"joint_{i}" for i in range(1, 7)] + ['ball_joint'],
-            'vx300s': ["waist", "shoulder", "forearm_roll", "elbow", "wrist_angle", "wrist_rotate", ] + ['ball_joint'],
-            }
-    optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters[model])
+    #import the yaml file named like model .yaml
+    with open(f"{parent_directory}/config_optimizer/{model}.yaml", "r") as f:
+        parameters = yaml.load(f, Loader=yaml.FullLoader)
+    optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters['joints'])
     optimizer.data= remove_outliers(optimizer._model, optimizer.data)
     optimizer.evaluate_fks(verbose=True)
     optimizer.optimize(saving_steps=saving_steps)

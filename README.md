@@ -208,7 +208,27 @@ This will save the data in the direction `data` with the name `panda_with_sensor
 python3 generate_complete_analysis.py --model panda_plus_bota --data panda_1_with_sensor/front
 ```
 This will generate an optimized file in `calibrated_urdf` in the subfolder `panda_with_sensor` named `panda_plus_bota.urdf`. So now you can take your old broken urdf and swap it with the new one.  
+# Calibrate a bimanual setup 
+Plase the tool in front of the two robots. We are going to use the tool now to identify the chosen global frame. Place the tool in the y direction with the hole 1 in the direction of the positive y. Place it also on a flat table that is perpendicular to the gravity vector. I measure left and right from the perspecttive of the user looking at the robots. 
 
+You calibrate each of the robot saparetly before. This last stage is not to calibrated the kinematics but only the relative position of the base. 
+You will have to record another dataset for each robot for each socket. 
+For example: 
+```bash
+rosrun calibration_tools record_joint_states_panda --joint-state-topic-name /joint_states --robot-name panda_left --config-file panda_left.yaml --tool-position-on-table world_frame 
+```
+and for the robot on the right
+
+```bash
+rosrun calibration_tools record_joint_states_panda --joint-state-topic-name /joint_states --robot-name panda_right --config-file panda_right.yaml --tool-position-on-table world_frame 
+```
+Perfect, now we compute the realtive position of the arms in the world frames that we just placed in the currenct location of the MUCKa tool: 
+
+```
+python3 bimanual_calibration.py --robot_left panda_2  --robot_right panda_3 --data_left panda_left/world_frame  --data_right panda_right/world_frame
+```
+
+This script will save a file called relative_position.yaml folder of the workspace. 
 # Limitations 
 The proposed method does not work for all the robots! Here is an example of performing the training on the kinova gen3lite robot. They do not have harmonic drives in each joint, hence they have more backlash. This is a problem, since we have uncertainty in the joint angles. Let's look at the bar plot before and after the training on different tool position. 
 ![alt text](imgs/bar_plot_statistics_kinova.png)

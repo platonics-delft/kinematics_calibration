@@ -116,6 +116,11 @@ calibration_data = {
             'z': float(t_L[2][0])
         },
         'orientation': {
+            'roll': float(roll_L),
+            'pitch': float(pitch_L),
+            'yaw': float(yaw_L),
+        },
+        'quaternion': {
             'w': float(quaternion_L[0]),
             'x': float(quaternion_L[1]),
             'y': float(quaternion_L[2]),
@@ -130,6 +135,11 @@ calibration_data = {
             'z': float(t_R[2][0])
         },
         'orientation': {
+            'r': float(roll_R),
+            'p': float(pitch_R),
+            'y': float(yaw_R)
+        },
+        'quaternion': {
             'w': float(quaternion_R[0]),
             'x': float(quaternion_R[1]),
             'y': float(quaternion_R[2]),

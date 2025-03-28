@@ -86,7 +86,7 @@ diff_X_l = X_l_1 - X_l_0
 
 R_R = compute_rotation_matrix(diff_X_r.reshape(-1), d_vector.reshape(-1))
 R_L = compute_rotation_matrix(diff_X_l.reshape(-1), d_vector.reshape(-1))
-
+    
 t_L = - R_L.dot(X_l_0)
 t_R = - R_R.dot(X_r_0)
 
@@ -94,6 +94,9 @@ t_R = - R_R.dot(X_r_0)
 roll_L, pitch_L, yaw_L = R.from_matrix(R_L).as_euler('xyz')
 roll_R, pitch_R, yaw_R = R.from_matrix(R_R).as_euler('xyz')
 
+# convert the rotation matrix in a quaternion 
+quaternion_L = R.from_matrix(R_L).as_quat(scalar_first=True)
+quaternion_R = R.from_matrix(R_R).as_quat(scalar_first=True)
 # save a yaml file with the structure
 # left: 
 #     position: 
@@ -113,9 +116,11 @@ calibration_data = {
             'z': float(t_L[2][0])
         },
         'orientation': {
-            'r': float(roll_L),
-            'p': float(pitch_L),
-            'y': float(yaw_L)
+            'w': float(quaternion_L[0]),
+            'x': float(quaternion_L[1]),
+            'y': float(quaternion_L[2]),
+            'z': float(quaternion_L[3]),
+            
         }
     },
     'right': {
@@ -125,9 +130,11 @@ calibration_data = {
             'z': float(t_R[2][0])
         },
         'orientation': {
-            'r': float(roll_R),
-            'p': float(pitch_R),
-            'y': float(yaw_R)
+            'w': float(quaternion_R[0]),
+            'x': float(quaternion_R[1]),
+            'y': float(quaternion_R[2]),
+            'z': float(quaternion_R[3]),
+            
         }
     }
 }

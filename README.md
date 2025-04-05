@@ -62,6 +62,17 @@ What to do when the code runs:
 - Press 's' when you switch the hole in which you are recording
 - Press 'q' when you have finished recording. 
 
+Alternatively, you can also use ROS2:
+```bash
+cd ros2_ws
+colcon build
+source install/setup.{bash,zsh}
+```
+and run
+```bash
+ros2 run calibration_tools record_joint_states_dataset --joint-state-topic-name /joint_states --robot-name kuka_1  --tool-position-on-table front --robot-dof 7 
+```
+
 
 ### Record data with a Franka 
 ![Alt Text](imgs/mukca_franka.gif)

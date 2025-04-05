@@ -1,0 +1,29 @@
+services:
+  kinematics_calibration:
+    build:
+      context: .
+    container_name: kinematics_calibration_container
+
+    network_mode: "host"
+    ipc: "host"
+    pid: "host"
+    privileged: true
+
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+
+    volumes:
+      - $HOME/.Xauthority:/root/.Xauthority 
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw 
+      - /dev:/dev
+
+    environment:
+      QT_X11_NO_MITSHM: 1
+      DISPLAY: $DISPLAY
+      ROS_DOMAIN_ID: 100
+      RCUTILS_COLORIZED_OUTPUT: 1
+      SHELL: /bin/bash
+
+    cap_add:
+      - SYS_NICE

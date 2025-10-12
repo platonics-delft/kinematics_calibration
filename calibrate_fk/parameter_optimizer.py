@@ -296,6 +296,104 @@ class ParameterOptimizer():
                 self.save_intermediate_solution(intermediate_solution, parameter_list, i)
 
 
+    def optimize_baseline(self, saving_steps: bool = False):
+        self.create_fk_expression()
+        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
+        
+        # Pre-compute fixed means using initial parameters (pure FK without symbolic parameters)
+        fixed_means = {}
+        for socket_name, sockets in self.data.items():
+            # Compute mean for first socket using initial/pure FK
+            fks_1_initial = []
+            for joint_angles_1 in sockets[0]:
+                fk_initial = self._fk_fun_pure(joint_angles_1)
+                fks_1_initial.append(fk_initial)
+            fk_mean_1_fixed = ca.sum2(ca.horzcat(*fks_1_initial)) / len(fks_1_initial)
+            
+            # Compute mean for second socket using initial/pure FK  
+            fks_2_initial = []
+            for joint_angles_2 in sockets[1]:
+                fk_initial = self._fk_fun_pure(joint_angles_2)
+                fks_2_initial.append(fk_initial)
+            fk_mean_2_fixed = ca.sum2(ca.horzcat(*fks_2_initial)) / len(fks_2_initial)
+            
+            fixed_means[socket_name] = {
+                'mean_1': fk_mean_1_fixed,
+                'mean_2': fk_mean_2_fixed,
+                'N1': len(sockets[0]),
+                'N2': len(sockets[1])
+            }
+        
+        # for each element in read_multiplethe dictionary 
+        objective = 0
+        for socket_name, sockets in self.data.items():
+            fks_1 = []
+            for joint_angles_1 in sockets[0]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
+                fks_1.append(substituted_fk)
+            fks_2 = []
+            for joint_angles_2 in sockets[1]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_2)
+                fks_2.append(substituted_fk)
+
+            # Use fixed means computed with initial parameters
+            fk_mean_1 = fixed_means[socket_name]['mean_1']
+            N1 = fixed_means[socket_name]['N1']
+            fk_variance_1 = ca.sum2(ca.horzcat(*[(fk - fk_mean_1)**2 for fk in fks_1])) / len(fks_1)
+            fk_variance_norm_1 = ca.sum1(fk_variance_1)
+            fk_mean_2 = fixed_means[socket_name]['mean_2']
+            N2 = fixed_means[socket_name]['N2']
+            fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
+            fk_variance_norm_2 = ca.sum1(fk_variance_2)
+
+            objective += (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2)
+
+        residuals = []
+        for joint_name, joint_params in self._params.items():
+            for param_name, param in joint_params.items():
+                param_epsilon = param - self._initial_params[joint_name][param_name]
+                #aggregate onlyy if the name of the joint is not ball_joint
+                if joint_name != "ball_joint":
+                    residuals.append(param_epsilon**2)
+        objective += len(self.data.values()) * self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
+
+        parameter_list = self.list_parameters()
+        # Add constraints
+        problem = {'x': parameter_list, 'f': objective}
+        nx = parameter_list.size()[0]
+        # set learning rate /step size
+        calibration_iteration_callback = IterationStepCallback("iteration_callback", nx=nx)
+        solver_options = {
+            'ipopt': {
+                'print_level': 0,
+            },
+
+        }
+        if saving_steps:
+            solver_options['iteration_callback'] = calibration_iteration_callback
+        solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
+        x0 = self.list_best_parameters()
+        solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
+        self._nb_steps = solver.stats()['iter_count']
+        solution_list = np.array(solution['x'])[:, 0].tolist()
+        for i in range(len(solution_list)):
+            symbol = parameter_list[i]
+            value = solution_list[i]
+            # split only at the last underscore
+            joint_name, param_name = symbol.name().rsplit("_", 1)
+            self._best_params[joint_name][param_name] = value
+        self.urdf_name = os.path.basename(self._urdf_file)
+        output_file = os.path.join(self._output_folder,self.urdf_name)
+        self.modify_urdf_parameters(output_file, self._best_params)
+        self._model = yourdfpy.URDF.load(output_file)
+
+        for joint_name, joint_params in self._best_params.items():
+            for param_name, param in joint_params.items():
+                param_residual = param - self._initial_params[joint_name][param_name]
+                self._residuals[joint_name][param_name] = param_residual
+        if saving_steps:
+            for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
+                self.save_intermediate_solution(intermediate_solution, parameter_list, i)
     def save_intermediate_solution(self, intermediate_solution: List[float], parameter_list: List[ca.SX], i: int):
             intermediate_parameters = deepcopy(self._best_params)
             for j in range(len(intermediate_solution)):

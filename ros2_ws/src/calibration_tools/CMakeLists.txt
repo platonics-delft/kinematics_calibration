@@ -20,24 +20,6 @@ find_package(std_msgs REQUIRED)
 # Install Python modules
 ament_python_install_package(${PROJECT_NAME})
 
-# Install Python scripts - the old script files are kept for compatibility
-install(PROGRAMS
-  scripts/record_joint_states_dataset
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# Install Python modules in scripts directory for compatibility
-install(FILES
-  scripts/joint_state_recorder.py
-  DESTINATION lib/${PROJECT_NAME}
-)
-
-# Install launch files
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}/
-)
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights

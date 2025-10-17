@@ -12,17 +12,17 @@ def main():
     
     # Parse arguments
     argument_parser = argparse.ArgumentParser(description='Run the joint states recorder')
-    argument_parser.add_argument("--joint-state-topic-name", "-j", help="Topic where the joint state is published", required=True)
-    argument_parser.add_argument("--robot-name", "-r", help="name of the robot that you are calibrating, e.g. kuka_1", required=True)
-    argument_parser.add_argument("--tool-position-on-table", "-t", help="position of the tool on the table for the franka", required=True)
-    argument_parser.add_argument("--robot-dof", "-dof", help="Degree of freedom of the robot", default=7, type=int)
+    argument_parser.add_argument("--joint-state-topic-name", "-j", help="Topic where the joint state is published, usually /joint_states", default="/joint_states")
+    argument_parser.add_argument("--robot-name", "-r", help="name of the robot that you are calibrating, e.g. kuka_1", default="robot")
+    argument_parser.add_argument("--tool-position-on-table", "-t", help="position of the tool on the table", default="unspecified_tool_position")
+    argument_parser.add_argument("--joint-names", "-names", help="List of joint names to record (space-separated). If not specified, all joints from the topic will be used.", nargs='+', required=False, default=None)
     
     args = argument_parser.parse_args()
     
     joint_state_topic_name = args.joint_state_topic_name
     robot_name = args.robot_name
     tool_position = args.tool_position_on_table
-    dof = args.robot_dof
+    joint_names = args.joint_names
     
     try:
         # Get package path using ROS2 package discovery
@@ -47,10 +47,14 @@ def main():
     print(f"Joint state topic: {joint_state_topic_name}")
     print(f"Robot name: {robot_name}")
     print(f"Tool position: {tool_position}")
-    print(f"DOF: {dof}")
+    if joint_names is not None:
+        print(f"Joint names: {joint_names}")
+    else:
+        print("Joint names: Will use all joints from topic")
+        print("DOF: Will be determined from topic")
     
     # Create and run the node
-    node = JointStatesRecorder(joint_state_topic_name, data_folder, dof)
+    node = JointStatesRecorder(joint_state_topic_name, data_folder, joint_names)
     
     try:
         node.run()

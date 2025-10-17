@@ -7,7 +7,7 @@ import pynput
 from sensor_msgs.msg import JointState
 
 class JointStatesRecorder(Node):
-    def __init__(self, joint_state_topic_name: str, folder_name: str, dof: int):
+    def __init__(self, joint_state_topic_name: str, folder_name: str, joint_names: list = None):
         super().__init__("joint_states_recorder")
         
         # Create QoS profile for subscription
@@ -22,8 +22,9 @@ class JointStatesRecorder(Node):
         )
         
         self._data = {"hole_0": [], "hole_1": []}
-        self._dof = dof
-        self._positions = np.zeros(self._dof)
+        self._joint_names = joint_names  # Store the desired joint names
+        self._positions = None  # Will be initialized when we know the size
+        self._initialized = False  # Track if we've received the first message
         self._active_hole = 0
         self._pykeyboard = pynput.keyboard.Listener(on_press=self.on_press)
         self._pykeyboard.start()
@@ -47,13 +48,6 @@ class JointStatesRecorder(Node):
         # This replaces the rospy.Rate.sleep() functionality
         pass
 
-    def read_data(self):
-        for file_name in os.listdir(self._folder_name):
-            hole_name = file_name.split(".")[0]
-            file_path = os.path.join(self._folder_name, file_name)
-            data = np.loadtxt(file_path, delimiter=",")
-            self._data[hole_name] = data.tolist()
-
     def print_info(self):
         self.log("Press 'a' to add a data point")
         self.log("Press 'd' to delete the last data point")
@@ -69,6 +63,11 @@ class JointStatesRecorder(Node):
 
     def on_press(self, key):
         try:
+            # Check if we have initialized positions
+            if not self._initialized or self._positions is None:
+                self.log("Waiting for joint state data... Please ensure the robot is publishing joint states.")
+                return
+                
             # Add the current position to the data if the space key is pressed
             if key.char == 'a':
                 self._data[self.hole_name()].append(self._positions.tolist())
@@ -96,6 +95,11 @@ class JointStatesRecorder(Node):
         self.log_joint_length(len(self._data['hole_0']))
         self.log(f"Saved joint for hole 1:")
         self.log_joint_length(len(self._data['hole_1']))
+        
+        # Display joint names if available
+        if hasattr(self, '_joint_names') and self._joint_names is not None:
+            self.log(f"Joint names: {', '.join(self._joint_names)}")
+        
         self.log(f"Active hole is green:")
         self.print_circle_with_number(self.hole_name()[-1])
 
@@ -127,11 +131,78 @@ class JointStatesRecorder(Node):
         for hole_name, data in self._data.items():
             if len(data) > 0:  # Only save if there's data
                 file_name = os.path.join(self._folder_name, f"{hole_name}.csv")
-                np.savetxt(file_name, np.array(data), delimiter=",")
+                
+                # Create a structured array with joint names as header
+                if hasattr(self, '_joint_names') and self._joint_names is not None:
+                    # Save with header containing joint names
+                    header = ','.join(self._joint_names)
+                    np.savetxt(file_name, np.array(data), delimiter=",", header=header, comments='')
+                else:
+                    # Fallback to original behavior if joint names not available
+                    np.savetxt(file_name, np.array(data), delimiter=",")
+                
                 self.log(f"Saved {len(data)} points for {hole_name}")
+
+    def read_data(self):
+        for file_name in os.listdir(self._folder_name):
+            if not file_name.endswith('.csv'):
+                continue
+                
+            hole_name = file_name.split(".")[0]
+            file_path = os.path.join(self._folder_name, file_name)
+            
+            try:
+                # Try to read with header
+                with open(file_path, 'r') as f:
+                    first_line = f.readline().strip()
+                    if first_line.startswith('#'):
+                        # File has header with joint names
+                        joint_names = first_line[1:].split(',')  # Remove # and split
+                        data = np.loadtxt(file_path, delimiter=",", skiprows=1)
+                        
+                        # Store joint names if this is the first time reading
+                        if not hasattr(self, '_joint_names') or self._joint_names is None:
+                            self._joint_names = joint_names
+                    else:
+                        # File has no header, read normally
+                        data = np.loadtxt(file_path, delimiter=",")
+                
+                # Handle single row case
+                if data.ndim == 1:
+                    data = data.reshape(1, -1)
+                    
+                self._data[hole_name] = data.tolist()
+                self.log(f"Loaded {len(data)} points for {hole_name}")
+                
+            except Exception as e:
+                self.log(f"Error reading {file_path}: {e}")
+                # Fallback to original method
+                data = np.loadtxt(file_path, delimiter=",")
+                if data.ndim == 1:
+                    data = data.reshape(1, -1)
+                self._data[hole_name] = data.tolist()
             
     def joint_states_callback(self, msg: JointState):
-        self._positions = np.array(msg.position)[0:self._dof]
+        # Initialize on first message if needed
+        if not self._initialized:
+            if self._joint_names is None:
+                # Use all joints from the topic
+                self._joint_names = list(msg.name)
+                self.log(f"Auto-detected {len(self._joint_names)} joints: {self._joint_names}")
+
+            self._positions = np.zeros(len(self._joint_names))
+            self._initialized = True
+        
+        # Filter joints based on the joint names
+        positions = []
+        for joint_name in self._joint_names:
+            if joint_name in msg.name:
+                idx = msg.name.index(joint_name)
+                positions.append(msg.position[idx])
+            else:
+                self.get_logger().warn(f"Joint {joint_name} not found in message")
+                positions.append(0.0)  # Default value if joint not found
+        self._positions = np.array(positions)
 
     def run(self):
         rclpy.spin(self)

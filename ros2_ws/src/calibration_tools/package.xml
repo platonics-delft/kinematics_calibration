@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>calibration_tools</name>
+  <version>0.0.0</version>
+  <description>The calibration_tools package for kinematic calibration</description>
+
+  <maintainer email="franzesegiovanni@outlook.com">gfranzese</maintainer>
+
+  <license>MIT</license>
+
+  <!-- Build tool dependencies -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+
+  <!-- Build and runtime dependencies -->
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+
+  <!-- Python dependencies for the scripts -->
+  <exec_depend>python3-numpy</exec_depend>
+  <exec_depend>python3-pynput</exec_depend>
+
+  <!-- Test dependencies -->
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

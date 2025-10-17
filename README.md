@@ -208,7 +208,7 @@ This will save the data in the direction `data` with the name `panda_with_sensor
 python3 generate_complete_analysis.py --model panda_plus_bota --data panda_1_with_sensor/front
 ```
 This will generate an optimized file in `calibrated_urdf` in the subfolder `panda_with_sensor` named `panda_plus_bota.urdf`. So now you can take your old broken urdf and swap it with the new one.  
-# Calibrate a bimanual setup 
+# Calibrate a bimanual setup (Experimental ⚠️)
 Plase the tool in front of the two robots. We are going to use the tool now to identify the chosen global frame. Place the tool in the y direction with the hole 1 in the direction of the positive y. Place it also on a flat table that is perpendicular to the gravity vector. I measure left and right from the perspecttive of the user looking at the robots. 
 
 You calibrate each of the robot saparetly before. This last stage is not to calibrated the kinematics but only the relative position of the base. 
@@ -229,6 +229,8 @@ python3 bimanual_calibration.py --robot_left panda_2  --robot_right panda_3 --da
 ```
 
 This script will save a file called relative_position.yaml folder of the workspace. 
+⚠️ Warning!
+The bimanual calibration is only experimental and only had limited tested on a limited case. Moreover, currently the authors believe that the bimanual calibration made in this way is a ill posed problem. This is not part of the official MUKCa calibration proceedure. 
 # Limitations 
 The proposed method does not work for all the robots! Here is an example of performing the training on the kinova gen3lite robot. They do not have harmonic drives in each joint, hence they have more backlash. This is a problem, since we have uncertainty in the joint angles. Let's look at the bar plot before and after the training on different tool position. 
 ![alt text](imgs/bar_plot_statistics_kinova.png)

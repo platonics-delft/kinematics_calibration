@@ -350,7 +350,7 @@ def plot_training_curves(model_folder: str, data_folders_train: str, data_folder
     print(f"Offset distance: {offset_distance}")
 
     for step in steps:
-        print(f"Step {step}")
+        # print(f"Step {step}")
         model_step = URDF.load(f"{model_folder}/step_{step}/model.urdf")
         statistics = evaluate_model(model_step, data_folders_train, offset_distance=offset_distance)
         for i, (key, value) in enumerate(statistics.items()):

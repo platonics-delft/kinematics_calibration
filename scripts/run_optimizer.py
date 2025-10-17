@@ -93,7 +93,7 @@ def main():
     optimizer.select_parameters(variance_noise=variance_noise, selected_parameters=parameters['joints'])
     optimizer.data= remove_outliers(optimizer._model, optimizer.data)
     optimizer.evaluate_fks(verbose=True)
-    optimizer.optimize(saving_steps=saving_steps)
+    optimizer.optimize(use_dynamic_means=True, use_distortion_error=False, use_regularization=False, saving_steps=saving_steps)
     optimizer.evaluate_fks(verbose=True)
 
 

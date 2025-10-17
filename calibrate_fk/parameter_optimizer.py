@@ -220,10 +220,8 @@ class ParameterOptimizer():
         # create an empty dictionary to store the data
         self.data = read_data(folder=folder, number_samples=number_samples)
 
-    def optimize(self, saving_steps: bool = False):
-        self.create_fk_expression()
-        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
-        # for each element in read_multiplethe dictionary 
+    def _compute_objective_dynamic_mean(self) -> ca.SX:
+        """Compute objective function from MUKCa: Accurate and Affordable Cobot Calibration Without External Measurement Devices, Franzese et al. (2025)."""
         objective = 0
         for sockets in self.data.values():
             fks_1 = []
@@ -244,62 +242,32 @@ class ParameterOptimizer():
             fk_variance_2 = ca.sum2(ca.horzcat(*[(fk - fk_mean_2)**2 for fk in fks_2])) / len(fks_2)
             fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
-            distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
-            distance_error_squared = distance_error**2
-            objective += (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2) + distance_error_squared
-
-        residuals = []
-        for joint_name, joint_params in self._params.items():
-            for param_name, param in joint_params.items():
-                param_epsilon = param - self._initial_params[joint_name][param_name]
-                #aggregate onlyy if the name of the joint is not ball_joint
-                if joint_name != "ball_joint":
-                    residuals.append(param_epsilon**2)
-        objective += len(self.data.values()) * self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
-
-        parameter_list = self.list_parameters()
-        # Add constraints
-        problem = {'x': parameter_list, 'f': objective}
-        nx = parameter_list.size()[0]
-        # set learning rate /step size
-        calibration_iteration_callback = IterationStepCallback("iteration_callback", nx=nx)
-        solver_options = {
-            'ipopt': {
-                'print_level': 0,
-            },
-
-        }
-        if saving_steps:
-            solver_options['iteration_callback'] = calibration_iteration_callback
-        solver = ca.nlpsol('solver', 'ipopt', problem, solver_options)
-        x0 = self.list_best_parameters()
-        solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
-        self._nb_steps = solver.stats()['iter_count']
-        solution_list = np.array(solution['x'])[:, 0].tolist()
-        for i in range(len(solution_list)):
-            symbol = parameter_list[i]
-            value = solution_list[i]
-            # split only at the last underscore
-            joint_name, param_name = symbol.name().rsplit("_", 1)
-            self._best_params[joint_name][param_name] = value
-        self.urdf_name = os.path.basename(self._urdf_file)
-        output_file = os.path.join(self._output_folder,self.urdf_name)
-        self.modify_urdf_parameters(output_file, self._best_params)
-        self._model = yourdfpy.URDF.load(output_file)
-
-        for joint_name, joint_params in self._best_params.items():
-            for param_name, param in joint_params.items():
-                param_residual = param - self._initial_params[joint_name][param_name]
-                self._residuals[joint_name][param_name] = param_residual
-        if saving_steps:
-            for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
-                self.save_intermediate_solution(intermediate_solution, parameter_list, i)
-
-
-    def optimize_baseline(self, saving_steps: bool = False):
-        self.create_fk_expression()
-        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
+            objective += (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2)
         
+        return objective
+    def _compute_objective_distortion(self, objective: ca.SX) -> ca.SX:
+        """Compute distortion error term."""
+        distortion_error = 0
+        for sockets in self.data.values():
+            fks_1 = []
+            for joint_angles_1 in sockets[0]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_1)
+                fks_1.append(substituted_fk)
+            fks_2 = []
+            for joint_angles_2 in sockets[1]:
+                substituted_fk = ca.substitute(self._fk_casadi_expr, self._q, joint_angles_2)
+                fks_2.append(substituted_fk)
+
+            fk_mean_1 = ca.sum2(ca.horzcat(*fks_1)) / len(fks_1)
+            fk_mean_2 = ca.sum2(ca.horzcat(*fks_2)) / len(fks_2)
+
+            distance_error = (ca.norm_2(fk_mean_1 - fk_mean_2) - self._offset_distance)
+            distortion_error += distance_error**2
+
+        objective += distortion_error
+        return objective
+    def _compute_objective_fixed_mean(self) -> ca.SX:
+        """Compute objective function with fixed means from Kinematic model calibration of a collaborative redundant robot using a closed kinematic chain, Petric et al. (2024)."""
         # Pre-compute fixed means using initial parameters (pure FK without symbolic parameters)
         fixed_means = {}
         for socket_name, sockets in self.data.items():
@@ -324,7 +292,6 @@ class ParameterOptimizer():
                 'N2': len(sockets[1])
             }
         
-        # for each element in read_multiplethe dictionary 
         objective = 0
         for socket_name, sockets in self.data.items():
             fks_1 = []
@@ -347,7 +314,11 @@ class ParameterOptimizer():
             fk_variance_norm_2 = ca.sum1(fk_variance_2)
 
             objective += (fk_variance_norm_1* N1 + fk_variance_norm_2 *N2) /(N1 + N2)
+        
+        return objective
 
+    def _add_regularization_terms(self, objective: ca.SX) -> ca.SX:
+        """Add regularization terms to the objective function."""
         residuals = []
         for joint_name, joint_params in self._params.items():
             for param_name, param in joint_params.items():
@@ -356,7 +327,10 @@ class ParameterOptimizer():
                 if joint_name != "ball_joint":
                     residuals.append(param_epsilon**2)
         objective += len(self.data.values()) * self._regulizer_weight * ca.sum1(ca.vertcat(*residuals))
+        return objective
 
+    def _solve_optimization_problem(self, objective: ca.SX, saving_steps: bool = False):
+        """Set up and solve the optimization problem."""
         parameter_list = self.list_parameters()
         # Add constraints
         problem = {'x': parameter_list, 'f': objective}
@@ -366,8 +340,8 @@ class ParameterOptimizer():
         solver_options = {
             'ipopt': {
                 'print_level': 0,
+                'max_iter': 30,
             },
-
         }
         if saving_steps:
             solver_options['iteration_callback'] = calibration_iteration_callback
@@ -375,6 +349,8 @@ class ParameterOptimizer():
         x0 = self.list_best_parameters()
         solution = solver(x0=x0)#, lbx=lbx, ubx=ubx)
         self._nb_steps = solver.stats()['iter_count']
+        
+        # Process solution
         solution_list = np.array(solution['x'])[:, 0].tolist()
         for i in range(len(solution_list)):
             symbol = parameter_list[i]
@@ -382,18 +358,47 @@ class ParameterOptimizer():
             # split only at the last underscore
             joint_name, param_name = symbol.name().rsplit("_", 1)
             self._best_params[joint_name][param_name] = value
+        
+        # Save results
         self.urdf_name = os.path.basename(self._urdf_file)
-        output_file = os.path.join(self._output_folder,self.urdf_name)
+        output_file = os.path.join(self._output_folder, self.urdf_name)
         self.modify_urdf_parameters(output_file, self._best_params)
         self._model = yourdfpy.URDF.load(output_file)
 
+        # Compute residuals
         for joint_name, joint_params in self._best_params.items():
             for param_name, param in joint_params.items():
                 param_residual = param - self._initial_params[joint_name][param_name]
                 self._residuals[joint_name][param_name] = param_residual
+        
+        # Save intermediate steps if requested
         if saving_steps:
             for i, intermediate_solution in enumerate(calibration_iteration_callback.solutions):
                 self.save_intermediate_solution(intermediate_solution, parameter_list, i)
+
+    def _run_optimization(self, use_dynamic_means: bool = True, use_distortion_error: bool = False, use_regularization: bool = False, saving_steps: bool = False):
+        """Common optimization routine."""
+        self.create_fk_expression()
+        self._fk_fun_pure = ca.Function("fk_pure", [self._q], [self._fk_casadi_expr_pure])
+        
+        # Compute objective based on strategy
+        if use_dynamic_means:
+            objective = self._compute_objective_dynamic_mean()
+        else:
+            objective = self._compute_objective_fixed_mean()
+        if use_distortion_error:
+            objective = self._compute_objective_distortion(objective)
+        if use_regularization:
+            # Add regularization
+            objective = self._add_regularization_terms(objective)
+
+        # Solve the optimization problem
+        self._solve_optimization_problem(objective, saving_steps)
+
+    def optimize(self, use_dynamic_means: bool = True, use_distortion_error: bool = True, use_regularization: bool = True, saving_steps: bool = False):
+        self._run_optimization(use_dynamic_means=use_dynamic_means, use_distortion_error=use_distortion_error, use_regularization=use_regularization, saving_steps=saving_steps)
+
+
     def save_intermediate_solution(self, intermediate_solution: List[float], parameter_list: List[ca.SX], i: int):
             intermediate_parameters = deepcopy(self._best_params)
             for j in range(len(intermediate_solution)):

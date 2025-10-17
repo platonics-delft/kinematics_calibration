@@ -29,6 +29,9 @@ def main():
     end_effector = args.end_effector
     root_link = args.root_link
 
+    use_dynamic_means=True
+    use_distortion_error=True
+    use_regularization=True
     saving_steps = False
     number_samples = args.number_samples
     offset_distance = float(args.offset_distance)
@@ -116,7 +119,7 @@ def main():
     for i, data_selected in enumerate(data_train):
         optimizer.read_data(data_selected, number_samples=number_samples)
         optimizer.data= remove_outliers(optimizer._model, optimizer.data)
-        optimizer.optimize(saving_steps=False)
+        optimizer.optimize(use_dynamic_means, use_distortion_error, use_regularization, saving_steps=False)
         statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
         stat = []   
         for values in statistics.values():
@@ -136,7 +139,7 @@ def main():
     for i, data_selected in enumerate(data_test):
         optimizer.read_data(data_selected, number_samples=number_samples)
         optimizer.data = remove_outliers(optimizer._model, optimizer.data)
-        optimizer.optimize(saving_steps=False)
+        optimizer.optimize(use_dynamic_means, use_distortion_error, use_regularization, saving_steps=False)
         statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
         stat = []   
         for values in statistics.values():
@@ -155,7 +158,8 @@ def main():
     plt.subplot(1, total_plot , sub_plot_index)
     optimizer.read_data(data_path, number_samples=number_samples)
     optimizer.data = remove_outliers(optimizer._model, optimizer.data)
-    optimizer.optimize(saving_steps=False)
+    optimizer.optimize(use_dynamic_means, use_distortion_error, use_regularization, saving_steps=saving_steps)
+
     statistics= evaluate_model(optimizer._model, data_path, verbose=False) 
     stat = []   
     for values in statistics.values():

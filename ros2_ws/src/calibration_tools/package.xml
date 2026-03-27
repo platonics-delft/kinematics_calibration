@@ -9,8 +9,7 @@
   <license>MIT</license>
 
   <!-- Build tool dependencies -->
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>ament_python</buildtool_depend>
 
   <!-- Build and runtime dependencies -->
   <depend>rclpy</depend>
@@ -28,6 +27,6 @@
   <test_depend>ament_lint_common</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_python</build_type>
   </export>
 </package>

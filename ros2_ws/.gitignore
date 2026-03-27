@@ -1,4 +1,3 @@
 build
-.catkin_tools
-devel
-logs
+install
+log
